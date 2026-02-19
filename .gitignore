@@ -1,0 +1,22 @@
+# Environment
+.env
+chrome_profile/
+jobsdb_cookies.json
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Data (large files)
+*.csv
+*.png
+failed_page.html
+
+# Docker
+pgdata/
+
+# OS
+.DS_Store

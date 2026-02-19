@@ -1,0 +1,10 @@
+fastapi>=0.110.0
+uvicorn[standard]
+pydantic>=2.7.0
+pydantic-settings
+psycopg2-binary
+pgvector
+pymupdf4llm
+google-generativeai
+ollama
+python-multipart
