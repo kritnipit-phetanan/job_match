@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from app.core.config import settings
+from app.routers import resume
 
 app = FastAPI(
     title="JobMatcher API",
     version="1.0.0",
     description="Resume Matching & Cover Letter Generator API"
 )
+
+app.include_router(resume.router)
 
 @app.get("/")
 def read_root():
