@@ -38,41 +38,53 @@ This project is divided into four main phases, following the standard Data Engin
 - [x] **Scraping Health Checks:**
     - [x] Implement a check to verify if JobsDB HTML selectors have changed (`test/health_check.py`)
 
-## Phase 3: Backend & RAG Logic (The Brain)
+## Phase 3: Backend & RAG Logic (The Brain) ✅
 
 **Goal:** Develop the Resume Analysis API with Hybrid Search capabilities.
 
 ### Step 1: Project Setup
-- [ ] Initialize **FastAPI** project structure (folders: `routers`, `schemas`, `services`).
-- [ ] Configure `settings.py` using `pydantic-settings` to load variables from `.env`.
+- [x] Initialize **FastAPI** project structure (folders: `routers`, `schemas`, `services`).
+- [x] Configure `settings.py` using `pydantic-settings` to load variables from `.env`.
 
 ### Step 2: Resume Parser Service
-- [ ] Install `pymupdf4llm` (recommended for high-accuracy local parsing).
-- [ ] Implement function to convert **PDF Resume** -> **Markdown Text**.
-- [ ] *(Bonus)* Implement text cleaning to remove **PII** (Personally Identifiable Information) like phone numbers/emails before embedding.
+- [x] Install `pymupdf4llm` (recommended for high-accuracy local parsing).
+- [x] Implement function to convert **PDF Resume** -> **Markdown Text**.
+- [x] *(Bonus)* Implement text cleaning to remove **PII** (Personally Identifiable Information) like phone numbers/emails before embedding.
 
-### Step 3: Core Logic `POST /analyze-resume`
-- [ ] **Embed:** Convert "Resume Markdown" to Vector (using `nomic-embed-text`).
-- [ ] **Hybrid Search:** Query `pgvector` with SQL logic:
+### Step 3: Core Logic `POST /analyze/resume`
+- [x] **Embed:** Convert "Resume Markdown" to Vector (using `nomic-embed-text`).
+- [x] **Hybrid Search:** Query `pgvector` with SQL logic:
     - *Query Logic:* `SELECT * FROM jobs ORDER BY embedding <=> resume_vec LIMIT 10`
     - *Filter:* Allow user to filter by `job_type` or `location` via API parameters.
-- [ ] **Ranking:** Calculate simple "Match Score" formula: `(1 - cosine_distance) * 100`.
+- [x] **Ranking:** Calculate simple "Match Score" formula: `(1 - cosine_distance) * 100`.
 
 ### Step 4: Generative AI `POST /generate-cover-letter`
-- [ ] Integrate **Gemini API** (using `google-generativeai` SDK).
-- [ ] Design System Prompt that accepts `{resume_markdown}` and `{job_description}`.
-- [ ] Implement **Streaming Response** (optional but highly recommended for UX) to show the letter being typed out in real-time.
+- [x] Integrate **Gemini API** (using `google.genai` SDK).
+- [x] Design System Prompt that accepts `{resume_markdown}` and `{job_description}`.
+- [x] Implement **Streaming Response** (optional but highly recommended for UX) to show the letter being typed out in real-time.
 
 ## Phase 4: Frontend & Deployment (The Interface)
 **Goal:** Create a user-friendly web application.
-- [ ] Initialize **Next.js** project with Tailwind CSS and **Shadcn UI**.
-- [ ] Build **Job Dashboard**: List jobs with "Match %" badges.
-- [ ] Build **Resume Upload**: Drag-and-drop interface for PDF.
-- [ ] Build **Analysis View**: Show "Skills You Have" vs. "Skills You Lack".
-- [ ] **Deployment:**
-    - Frontend: Vercel.
-    - Backend/DB: Supabase (DB) + Render/Railway (API).
-- [ ] **Automation:** Configure GitHub Actions to run the Job Scraper daily.
+### Step 1: Frontend Initialization
+- [ ] Initialize **Next.js 15** (App Router) + React 19 project.
+- [ ] Configure **Tailwind CSS v4** (Zero-runtime, lightning-fast styling).
+- [ ] Integrate **Shadcn UI** for enterprise-grade, accessible components.
+
+### Step 2: Core UI Components
+- [ ] Build **Resume Upload Zone**: Interactive drag-and-drop interface accepting PDF files.
+- [ ] Build **Job Dashboard**: Data table/cards listing scraped jobs with "**Match Score %**" progress rings.
+
+### Step 3: AI Analysis Views
+- [ ] Build **Skill Gap Analysis**: Visual comparison of "Skills You Have" vs. "Skills You Lack" based on RAG output.
+- [ ] **Build Cover Letter Generator**: Real-time UI with a Streaming text effect to show Gemini AI typing the letter dynamically.
+
+### Step 4: Cloud Deployment (Production)
+- [ ] **Database**: Migrate local PostgreSQL to Supabase (Free tier with native pgvector support).
+- [ ] **Backend API**: Deploy FastAPI Docker container to Render or Railway (Easy auto-deploy from GitHub).
+- [ ] **Frontend**: Deploy Next.js app to Vercel for optimal Server-Side Rendering (SSR) and edge caching.
+
+### Step 5: CI/CD & Automation
+- [ ] Configure **GitHub Actions** cron job to run the Python scraper pipeline (etl/) automatically every night and upsert fresh data to Supabase.
 
 ## 🔮 Future Improvements
 - [ ] **Salary Trends:** Visualize average salaries for specific tech stacks.

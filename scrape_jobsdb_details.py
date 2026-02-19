@@ -12,6 +12,7 @@ import os
 COOKIES_FILE = "jobsdb_cookies.json"
 INPUT_FILE = "jobsdb_result_all.csv"       # ผลจาก scrape_jobsdb.py
 OUTPUT_FILE = "jobsdb_full_data.csv"       # ผลลัพธ์รวม JD
+BROKEN_LINK_FLAG = "Not Found"              # Flag สำหรับลิงก์เสีย → ข้ามเมื่อรันใหม่
 
 # User-Agent Pool (สลับ Chrome 143/144/145 พร้อม Build จริง)
 UA_POOL = [
@@ -137,23 +138,33 @@ def run():
     # ---------------------------------------------------------
     df_existing = None
     already_scraped_links = set()
+    broken_links = set()
 
     if os.path.exists(OUTPUT_FILE):
         df_existing = pd.read_csv(OUTPUT_FILE)
         # นับเฉพาะงานที่มี JD จริงๆ (ไม่ใช่ Not Found / Error)
         scraped_mask = (
             df_existing['JobDescription'].notna() &
-            ~df_existing['JobDescription'].isin(["Not Found", "Error", "No Link", ""])
+            ~df_existing['JobDescription'].isin([BROKEN_LINK_FLAG, "Error", "No Link", ""])
         )
         already_scraped_links = set(df_existing.loc[scraped_mask, 'Link'].dropna())
-        print(f"📋 พบข้อมูลเก่าใน {OUTPUT_FILE}: {len(df_existing)} งาน (มี JD แล้ว {len(already_scraped_links)} งาน)")
 
-    # หางานใหม่ที่ยังไม่เคย scrape
-    df_new = df_input[~df_input['Link'].isin(already_scraped_links)].reset_index(drop=True)
+        # ลิงก์เสีย (flag = "Not Found") → ข้ามเมื่อรันใหม่
+        broken_mask = df_existing['JobDescription'] == BROKEN_LINK_FLAG
+        broken_links = set(df_existing.loc[broken_mask, 'Link'].dropna())
+
+        print(f"📋 พบข้อมูลเก่าใน {OUTPUT_FILE}: {len(df_existing)} งาน (มี JD แล้ว {len(already_scraped_links)} งาน)")
+        if broken_links:
+            print(f"🚩 ลิงก์เสีย (flagged): {len(broken_links)} งาน → ข้าม")
+
+    # หางานใหม่ที่ยังไม่เคย scrape (ข้ามทั้งงานที่มี JD แล้วและลิงก์เสีย)
+    skip_links = already_scraped_links | broken_links
+    df_new = df_input[~df_input['Link'].isin(skip_links)].reset_index(drop=True)
 
     print(f"\n📊 สรุป:")
     print(f"   งานทั้งหมดใน {INPUT_FILE}: {len(df_input)} งาน")
     print(f"   เคย scrape JD แล้ว:        {len(already_scraped_links)} งาน")
+    print(f"   🚩 ลิงก์เสีย (ข้าม):        {len(broken_links)} งาน")
     print(f"   🆕 งานใหม่ที่ต้อง scrape:   {len(df_new)} งาน\n")
 
     if len(df_new) == 0:
@@ -230,9 +241,9 @@ def run():
                     print(f"   ✅ ดึง JD สำเร็จ! ({len(jd_text)} ตัวอักษร)")
                 else:
                     row_data = row.to_dict()
-                    row_data['JobDescription'] = "Not Found"
+                    row_data['JobDescription'] = BROKEN_LINK_FLAG
                     new_results.append(row_data)
-                    print("   ⚠️ หา JD ไม่เจอ")
+                    print(f"   ⚠️ หา JD ไม่เจอ → flagged เป็น '{BROKEN_LINK_FLAG}' (จะข้ามในรอบถัดไป)")
 
             except Exception as e:
                 row_data = row.to_dict()
@@ -263,11 +274,17 @@ def run():
     df_final.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
 
     # สรุปผล
-    success_count = sum(1 for r in new_results if r['JobDescription'] not in ["Not Found", "Error"])
+    success_count = sum(1 for r in new_results if r['JobDescription'] not in [BROKEN_LINK_FLAG, "Error"])
+    flagged_count = sum(1 for r in new_results if r['JobDescription'] == BROKEN_LINK_FLAG)
+    error_count = sum(1 for r in new_results if r['JobDescription'] == "Error")
     print(f"\n{'='*50}")
     print(f"🎉🎉 เสร็จสมบูรณ์!")
     print(f"   🆕 งานใหม่ที่ scrape รอบนี้: {len(new_results)} งาน")
     print(f"   ✅ ดึง JD ได้: {success_count}/{len(new_results)} งาน")
+    if flagged_count:
+        print(f"   🚩 ลิงก์เสีย (flagged):     {flagged_count} งาน (จะข้ามในรอบถัดไป)")
+    if error_count:
+        print(f"   ❌ Error (จะ retry รอบถัดไป): {error_count} งาน")
     print(f"   📊 ข้อมูลรวมทั้งหมดใน {OUTPUT_FILE}: {len(df_final)} งาน")
     print(f"{'='*50}")
 
