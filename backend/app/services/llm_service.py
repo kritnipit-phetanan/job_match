@@ -1,8 +1,9 @@
-import google.genai as genai
+from google import genai
 from app.core.config import settings
+import json
 
 # 1. ตั้งค่า API Key จากไฟล์ .env
-genai.configure(api_key=settings.GEMINI_API_KEY)
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 def generate_tailored_cover_letter(resume_text: str, job_desc: str) -> str:
     """
@@ -10,7 +11,7 @@ def generate_tailored_cover_letter(resume_text: str, job_desc: str) -> str:
     """
     try:
         # ใช้รุ่น Flash เพราะเร็วกว่าและฉลาดเพียงพอสำหรับงานเขียน
-        model = genai.GenerativeModel('gemini-3-flash-preview')
+        model = 'gemini-3-flash-preview'
         
         # 2. ออกแบบ System Prompt (Prompt Engineering)
         prompt = f"""
@@ -33,10 +34,50 @@ def generate_tailored_cover_letter(resume_text: str, job_desc: str) -> str:
         """
 
         # 3. สั่งให้ Gemini สร้างเนื้อหา
-        response = model.generate_content(prompt, stream=True)
+        response = client.models.generate_content(model=model, contents=prompt)
         
         return response.text
 
     except Exception as e:
         print(f"⚠️ Gemini API Error: {e}")
         raise ValueError("ไม่สามารถสร้าง Cover Letter ได้ กรุณาตรวจสอบ API Key หรือการเชื่อมต่อ")
+
+def analyze_skill_gap(resume_text: str, job_skills: list[str]) -> dict:
+    """
+    ให้ Gemini เทียบ Resume กับ Job Skills แล้วแยกเป็น หมวดหมู่ (มี/ขาด)
+    """
+    try:
+        model = 'gemini-3-flash-preview'
+        
+        # บังคับให้ AI คืนค่ามาเป็น JSON ที่เรากำหนดไว้เป๊ะๆ
+        prompt = f"""
+        You are an expert technical recruiter. Compare the candidate's resume with the REQUIRED JOB SKILLS.
+
+        CANDIDATE RESUME:
+        {resume_text}
+
+        REQUIRED JOB SKILLS:
+        {job_skills}
+
+        Categorize EVERY skill from the REQUIRED JOB SKILLS list into either 'matched_skills' (candidate has it or has related experience) or 'missing_skills' (candidate lacks it).
+        Respond ONLY with a valid JSON object in this exact format, without any markdown formatting or explanation:
+        {{
+            "matched_skills": ["skill1", "skill2"],
+            "missing_skills": ["skill3"]
+        }}
+        """
+        
+        response = client.models.generate_content(model=model, contents=prompt)
+        text = response.text.strip()
+        
+        # ป้องกันกรณี Gemini ส่ง ```json ... ``` กลับมา
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+                
+        return json.loads(text.strip())
+        
+    except Exception as e:
+        print(f"⚠️ Skill Gap API Error: {e}")
+        raise ValueError("ไม่สามารถวิเคราะห์ Skill Gap ได้ในขณะนี้")

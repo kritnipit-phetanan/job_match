@@ -2,8 +2,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
 from app.services.pdf_service import parse_pdf_to_markdown
 from app.services.rag_service import embed_text, search_matching_jobs
 from app.core.database import get_db_connection
-from app.services.llm_service import generate_tailored_cover_letter
-from app.schemas.job import CoverLetterRequest
+from app.services.llm_service import generate_tailored_cover_letter, analyze_skill_gap
+from app.schemas.job import CoverLetterRequest, SkillGapRequest
 
 router = APIRouter(
     prefix="/resume",
@@ -59,7 +59,8 @@ async def analyze_resume(
             "status": "success",
             "filename": file.filename,
             "total_matches": len(matched_jobs),
-            "jobs": matched_jobs
+            "jobs": matched_jobs,
+            "resume_markdown": markdown_text
         }
 
     except ValueError as ve:
@@ -92,3 +93,20 @@ async def generate_cover_letter(request: CoverLetterRequest):
     except Exception as e:
         print(f"🔥 Error ใน /generate-cover-letter: {e}")
         raise HTTPException(status_code=500, detail="เกิดข้อผิดพลาดในการสร้าง Cover Letter")
+
+@router.post("/skill-gap")
+async def get_skill_gap(request: SkillGapRequest):
+    """
+    วิเคราะห์ Skill ที่ตรงกัน และ Skill ที่ยังขาด
+    """
+    try:
+        result = analyze_skill_gap(
+            resume_text=request.resume_markdown, 
+            job_skills=request.job_skills
+        )
+        return {"status": "success", "data": result}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        print(f"🔥 Error ใน /skill-gap: {e}")
+        raise HTTPException(status_code=500, detail="เกิดข้อผิดพลาดในการวิเคราะห์ Skill Gap")

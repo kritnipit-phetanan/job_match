@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers import resume
 
@@ -8,6 +9,13 @@ app = FastAPI(
     description="Resume Matching & Cover Letter Generator API"
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://192.168.1.2:3000"], # อนุญาตทั้ง Local และ IP ตรง
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"], 
+)
 app.include_router(resume.router)
 
 @app.get("/")
