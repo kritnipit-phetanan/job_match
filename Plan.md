@@ -93,5 +93,5 @@ This project is divided into four main phases, following the standard Data Engin
 - [ ] **AI Mock Interviewer 🎙️:** Generate personalized interview questions based on the candidate's *Missing Skills* and the specific Job Description, allowing users to practice and receive AI feedback.
 - [ ] **Resume Roasting / Optimization 🔥:** An AI-powered critique mode that provides brutally honest (or highly professional) feedback to improve resume bullet points and action verbs.
 - [ ] **Career Path Evolution Roadmap 🗺️:** A visual progression tree showing the stepping stones from the user's current role to their dream role, predicting the next skills to acquire.
-- [ ] **Market Demand Heatmap 📊:** Real-time analytics highlighting trending "Hot Skills" across all scraped jobs to help users prioritize their learning focus.
+- [x] **Market Demand Heatmap 📊:** Real-time analytics highlighting trending "Hot Skills" across all scraped jobs to help users prioritize their learning focus.
 - [ ] **Tailored Portfolio Generator 💼:** Automatically generate a structured portfolio or GitHub README template that highlights the exact projects/skills a specific role demands.
