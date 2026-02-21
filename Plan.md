@@ -66,17 +66,17 @@ This project is divided into four main phases, following the standard Data Engin
 ## Phase 4: Frontend & Deployment (The Interface)
 **Goal:** Create a user-friendly web application.
 ### Step 1: Frontend Initialization
-- [ ] Initialize **Next.js 15** (App Router) + React 19 project.
-- [ ] Configure **Tailwind CSS v4** (Zero-runtime, lightning-fast styling).
-- [ ] Integrate **Shadcn UI** for enterprise-grade, accessible components.
+- [x] Initialize **Next.js 15** (App Router) + React 19 project.
+- [x] Configure **Tailwind CSS v4** (Zero-runtime, lightning-fast styling).
+- [x] Integrate **Shadcn UI** for enterprise-grade, accessible components.
 
 ### Step 2: Core UI Components
-- [ ] Build **Resume Upload Zone**: Interactive drag-and-drop interface accepting PDF files.
-- [ ] Build **Job Dashboard**: Data table/cards listing scraped jobs with "**Match Score %**" progress rings.
+- [x] Build **Resume Upload Zone**: Interactive drag-and-drop interface accepting PDF files.
+- [x] Build **Job Dashboard**: Data table/cards listing scraped jobs with "**Match Score %**" progress rings.
 
 ### Step 3: AI Analysis Views
-- [ ] Build **Skill Gap Analysis**: Visual comparison of "Skills You Have" vs. "Skills You Lack" based on RAG output.
-- [ ] **Build Cover Letter Generator**: Real-time UI with a Streaming text effect to show Gemini AI typing the letter dynamically.
+- [x] Build **Skill Gap Analysis**: Visual comparison of "Skills You Have" vs. "Skills You Lack" based on RAG output.
+- [x] **Build Cover Letter Generator**: Real-time UI with a Streaming text effect to show Gemini AI typing the letter dynamically.
 
 ### Step 4: Cloud Deployment (Production)
 - [ ] **Database**: Migrate local PostgreSQL to Supabase (Free tier with native pgvector support).
@@ -90,3 +90,8 @@ This project is divided into four main phases, following the standard Data Engin
 - [ ] **Salary Trends:** Visualize average salaries for specific tech stacks.
 - [ ] **Course Recommendation:** Suggest courses (Udemy/Coursera) for missing skills.
 - [ ] **Email Alerts:** Notify users when a >90% match job is found.
+- [ ] **AI Mock Interviewer 🎙️:** Generate personalized interview questions based on the candidate's *Missing Skills* and the specific Job Description, allowing users to practice and receive AI feedback.
+- [ ] **Resume Roasting / Optimization 🔥:** An AI-powered critique mode that provides brutally honest (or highly professional) feedback to improve resume bullet points and action verbs.
+- [ ] **Career Path Evolution Roadmap 🗺️:** A visual progression tree showing the stepping stones from the user's current role to their dream role, predicting the next skills to acquire.
+- [ ] **Market Demand Heatmap 📊:** Real-time analytics highlighting trending "Hot Skills" across all scraped jobs to help users prioritize their learning focus.
+- [ ] **Tailored Portfolio Generator 💼:** Automatically generate a structured portfolio or GitHub README template that highlights the exact projects/skills a specific role demands.
