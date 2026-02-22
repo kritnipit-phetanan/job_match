@@ -26,5 +26,5 @@ app.include_router(analytics.router)
 def read_root():
     return {
         "status": "online",
-        "message": "JobMatcher Brain is running! 🧠",
+        "message": "JobMatcher Brain is running!",
     }

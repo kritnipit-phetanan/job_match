@@ -5,6 +5,6 @@ pydantic-settings
 psycopg2-binary
 pgvector
 pymupdf4llm
-google-generativeai
+google-genai
 python-multipart
 tenacity
