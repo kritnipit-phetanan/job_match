@@ -90,7 +90,7 @@ export default function SkillHeatmap() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        axios.get("http://192.168.1.2:8000/analytics/hot-skills", { params: { limit: 30 } })
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/analytics/hot-skills`, { params: { limit: 30 } })
             .then(res => {
                 setSkills(res.data.skills);
                 setTotalJobs(res.data.total_jobs);

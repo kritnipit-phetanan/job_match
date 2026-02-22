@@ -87,7 +87,7 @@ This project is divided into four main phases, following the standard Data Engin
 - [ ] Configure **GitHub Actions** cron job to run the Python scraper pipeline (etl/) automatically every night and upsert fresh data to Supabase.
 
 ## 🔮 Future Improvements
-- [ ] **Salary Trends:** Visualize average salaries for specific tech stacks.
+- [x] **Salary Trends:** Visualize average salaries for specific tech stacks.
 - [ ] **Course Recommendation:** Suggest courses (Udemy/Coursera) for missing skills.
 - [ ] **Email Alerts:** Notify users when a >90% match job is found.
 - [ ] **AI Mock Interviewer 🎙️:** Generate personalized interview questions based on the candidate's *Missing Skills* and the specific Job Description, allowing users to practice and receive AI feedback.

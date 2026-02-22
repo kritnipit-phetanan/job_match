@@ -70,7 +70,7 @@ export default function SalaryTrends() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        axios.get("http://192.168.1.2:8000/analytics/salary-trends", { params: { limit: 20 } })
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/analytics/salary-trends`, { params: { limit: 20 } })
             .then(res => {
                 // เพิ่ม errorBar data สำหรับแสดง range
                 const enriched = res.data.skills.map((s: SalarySkill) => ({

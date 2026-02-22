@@ -53,7 +53,7 @@ export default function ResumeUpload() {
         formData.append("file", file);
 
         try {
-            const response = await axios.post("http://192.168.1.2:8000/resume/analyze", formData, {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/resume/analyze`, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
                 params: { limit: 5 }
             });
@@ -97,7 +97,7 @@ export default function ResumeUpload() {
         Experience Required: ${job.experience_years}
       `;
 
-            const response = await axios.post("http://192.168.1.2:8000/resume/generate-cover-letter", {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/resume/generate-cover-letter`, {
                 resume_markdown: resumeMarkdown,
                 job_description: jobContext
             });
@@ -212,48 +212,48 @@ export default function ResumeUpload() {
                                                 {/* --- พื้นที่แสดงผล Skills --- */}
                                                 <div className="flex flex-col gap-3 mt-4">
                                                     {showGaps[job.id] ? (
-                                                    // แสดงผลแบบแยก มี/ขาด (ข้อมูลมารออยู่แล้ว ไม่ต้องโหลด)
-                                                    <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-300">
-                                                        {job.matched_skills && job.matched_skills.length > 0 && (
-                                                        <div className="flex flex-wrap gap-2 items-center">
-                                                            <span className="text-sm font-semibold text-green-600 w-16">✅ มี:</span>
-                                                            {job.matched_skills.map((skill: string, idx: number) => (
-                                                            <Badge key={`m-${idx}`} className="bg-green-100 text-green-800 border-green-200">{skill}</Badge>
-                                                            ))}
+                                                        // แสดงผลแบบแยก มี/ขาด (ข้อมูลมารออยู่แล้ว ไม่ต้องโหลด)
+                                                        <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-300">
+                                                            {job.matched_skills && job.matched_skills.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 items-center">
+                                                                    <span className="text-sm font-semibold text-green-600 w-16">✅ มี:</span>
+                                                                    {job.matched_skills.map((skill: string, idx: number) => (
+                                                                        <Badge key={`m-${idx}`} className="bg-green-100 text-green-800 border-green-200">{skill}</Badge>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {job.missing_skills && job.missing_skills.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 items-center">
+                                                                    <span className="text-sm font-semibold text-red-600 w-16">❌ ขาด:</span>
+                                                                    {job.missing_skills.map((skill: string, idx: number) => (
+                                                                        <Badge key={`x-${idx}`} variant="outline" className="bg-red-50 text-red-600 border-red-200">{skill}</Badge>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            <Button variant="ghost" size="sm" className="h-6 mt-2 text-xs w-24" onClick={() => setShowGaps(prev => ({ ...prev, [job.id]: false }))}>
+                                                                ซ่อน Skill Gap
+                                                            </Button>
                                                         </div>
-                                                        )}
-                                                        {job.missing_skills && job.missing_skills.length > 0 && (
-                                                        <div className="flex flex-wrap gap-2 items-center">
-                                                            <span className="text-sm font-semibold text-red-600 w-16">❌ ขาด:</span>
-                                                            {job.missing_skills.map((skill: string, idx: number) => (
-                                                            <Badge key={`x-${idx}`} variant="outline" className="bg-red-50 text-red-600 border-red-200">{skill}</Badge>
-                                                            ))}
-                                                        </div>
-                                                        )}
-                                                        <Button variant="ghost" size="sm" className="h-6 mt-2 text-xs w-24" onClick={() => setShowGaps(prev => ({...prev, [job.id]: false}))}>
-                                                        ซ่อน Skill Gap
-                                                        </Button>
-                                                    </div>
                                                     ) : (
-                                                    // แสดงผลแบบรวมปกติ
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        {job.skills?.slice(0, 7).map((skill: string, idx: number) => (
-                                                        <Badge key={idx} variant="secondary" className="font-normal">{skill}</Badge>
-                                                        ))}
-                                                        {job.skills?.length > 7 && (
-                                                        <Badge variant="outline" className="font-normal text-muted-foreground">+{job.skills.length - 7} อื่นๆ</Badge>
-                                                        )}
-                                                        
-                                                        {/* ปุ่มกดเปิดดู Gap (สลับ UI ทันที ไม่ต้องรอ API) */}
-                                                        <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className="h-6 px-2 text-xs text-primary font-semibold hover:bg-primary/10 ml-2"
-                                                        onClick={() => setShowGaps(prev => ({...prev, [job.id]: true}))}
-                                                        >
-                                                        🔍 ดู Skill Gap
-                                                        </Button>
-                                                    </div>
+                                                        // แสดงผลแบบรวมปกติ
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            {job.skills?.slice(0, 7).map((skill: string, idx: number) => (
+                                                                <Badge key={idx} variant="secondary" className="font-normal">{skill}</Badge>
+                                                            ))}
+                                                            {job.skills?.length > 7 && (
+                                                                <Badge variant="outline" className="font-normal text-muted-foreground">+{job.skills.length - 7} อื่นๆ</Badge>
+                                                            )}
+
+                                                            {/* ปุ่มกดเปิดดู Gap (สลับ UI ทันที ไม่ต้องรอ API) */}
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 px-2 text-xs text-primary font-semibold hover:bg-primary/10 ml-2"
+                                                                onClick={() => setShowGaps(prev => ({ ...prev, [job.id]: true }))}
+                                                            >
+                                                                🔍 ดู Skill Gap
+                                                            </Button>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

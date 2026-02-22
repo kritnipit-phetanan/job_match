@@ -1,5 +1,6 @@
 # Environment
 .env
+.env.local
 chrome_profile/
 jobsdb_cookies.json
 
