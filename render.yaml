@@ -6,6 +6,11 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: 'off' # Disable automatic deploys
+    healthCheckPath: /
     envVars:
       - key: DATABASE_URL
         sync: false  # ตั้งค่าใน Render Dashboard
