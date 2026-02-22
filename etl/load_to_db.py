@@ -10,20 +10,14 @@ import sys
 import os
 
 # Import config และ modules ที่เราเขียนไว้
-from etl.config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, CSV_FULL_DATA
+from etl.config import get_database_url, CSV_FULL_DATA
 from etl.extract_skills import extract_skills
 from etl.embed_jobs import embed_text
 
 
 def get_connection():
-    """สร้าง connection ไปยัง PostgreSQL"""
-    return psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-    )
+    """สร้าง connection ไปยัง PostgreSQL (รองรับ DATABASE_URL สำหรับ Supabase)"""
+    return psycopg2.connect(get_database_url())
 
 
 def prepare_semantic_text(title: str, skills_data: dict, raw_jd: str) -> str:
@@ -107,7 +101,7 @@ def upsert_job(cur, job: dict) -> int:
     return cur.fetchone()[0]
 
 
-def upsert_embedding(cur, job_id: int, embedding: list, model: str = 'nomic-embed-text'):
+def upsert_embedding(cur, job_id: int, embedding: list, model: str = 'gemini-embedding-001'):
     """Insert หรือ update embedding สำหรับ job"""
     if embedding is None:
         return
@@ -125,9 +119,9 @@ def run_pipeline(csv_path: str = None, limit: int = None):
     """
     ETL Pipeline หลัก (Updated for Semantic Embedding):
     1. อ่าน CSV
-    2. Extract skills (Llama 3.2)
+    2. Extract skills (Groq — llama-3.1-8b-instant)
     3. Construct Rich Text (Title + Skills + Summary)
-    4. Embed Rich Text (Nomic)
+    4. Embed Rich Text (Gemini Embedding)
     5. Upsert เข้า PostgreSQL
     """
     csv_path = csv_path or CSV_FULL_DATA

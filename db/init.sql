@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS job_embeddings (
     id          SERIAL PRIMARY KEY,
     job_id      INTEGER UNIQUE REFERENCES jobs(id) ON DELETE CASCADE,
     embedding   vector(768),            -- nomic-embed-text = 768 dimensions
-    model       TEXT DEFAULT 'nomic-embed-text',
+    model       TEXT DEFAULT 'gemini-embedding-001',
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -50,3 +50,21 @@ CREATE INDEX IF NOT EXISTS idx_jobs_title ON jobs USING gin(to_tsvector('english
 CREATE INDEX IF NOT EXISTS idx_jobs_skills ON jobs USING gin(skills);
 
 -- Link uniqueness (already via UNIQUE constraint)
+
+-- ============================================================
+-- Auto-update updated_at timestamp
+-- ============================================================
+-- 1. สร้าง Function สำหรับอัปเดตเวลา
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- 2. นำ Function ไปผูกกับตาราง jobs
+CREATE TRIGGER update_jobs_modtime
+    BEFORE UPDATE ON jobs
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_column();

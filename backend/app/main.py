@@ -9,9 +9,12 @@ app = FastAPI(
     description="Resume Matching & Cover Letter Generator API"
 )
 
+# CORS — อ่าน origins จาก env (comma-separated), default: localhost
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://192.168.1.2:3000"], # อนุญาตทั้ง Local และ IP ตรง
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"], 
     allow_headers=["*"], 
@@ -21,9 +24,7 @@ app.include_router(analytics.router)
 
 @app.get("/")
 def read_root():
-    print(f"กำลังเชื่อมต่อ Database ที่: {settings.DB_HOST}")
     return {
         "status": "online",
         "message": "JobMatcher Brain is running! 🧠",
-        "database_host": settings.DB_HOST # ทดสอบว่าอ่าน config ได้ไหม
     }

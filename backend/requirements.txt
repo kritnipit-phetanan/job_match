@@ -6,5 +6,5 @@ psycopg2-binary
 pgvector
 pymupdf4llm
 google-generativeai
-ollama
 python-multipart
+tenacity

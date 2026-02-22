@@ -1,0 +1,15 @@
+# Render Blueprint — Auto-deploy configuration
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: jobmatcher-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # ตั้งค่าใน Render Dashboard
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

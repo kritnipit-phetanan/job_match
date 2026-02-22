@@ -1,0 +1,73 @@
+# ============================================================
+# JobMatcher — Automated Scraping & ETL Pipeline
+# รัน scraper + ETL ทุกคืน แล้ว upsert เข้า Supabase
+# ============================================================
+name: Nightly Scrape & ETL
+
+on:
+  # รันอัตโนมัติทุกคืน 02:00 UTC (09:00 เวลาไทย)
+  schedule:
+    - cron: '0 2 * * *'
+
+  # รัน manual ได้จาก GitHub UI
+  workflow_dispatch:
+
+jobs:
+  scrape-and-etl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # ---------------------------------------------------------
+      # 1. Checkout code
+      # ---------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------
+      # 2. Setup Python
+      # ---------------------------------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ---------------------------------------------------------
+      # 3. Install Playwright (Chromium only)
+      # ---------------------------------------------------------
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      # ---------------------------------------------------------
+      # 4. Phase 1 — Scrape job listings → upsert เข้า DB
+      # ---------------------------------------------------------
+      - name: "Phase 1: Scrape job listings"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JOBSDB_COOKIES: ${{ secrets.JOBSDB_COOKIES }}
+          HEADLESS: "true"
+        run: python cloud_scrape_jobs.py
+
+      # ---------------------------------------------------------
+      # 5. Phase 2 — Scrape JD details → update description
+      # ---------------------------------------------------------
+      - name: "Phase 2: Scrape job descriptions"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JOBSDB_COOKIES: ${{ secrets.JOBSDB_COOKIES }}
+          HEADLESS: "true"
+        run: python cloud_scrape_details.py
+
+      # ---------------------------------------------------------
+      # 6. ETL — Extract skills + Embed → upsert เข้า DB
+      # ---------------------------------------------------------
+      - name: "ETL: Extract skills & embeddings"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python -m etl.load_to_db

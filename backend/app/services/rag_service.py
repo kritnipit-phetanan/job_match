@@ -1,30 +1,42 @@
-import ollama
+"""
+RAG Service — Embedding + Vector Search
+ใช้ Gemini Embedding API (gemini-embedding-001)
+"""
+from google import genai
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.core.config import settings
 
+# Lazy-init Gemini Client (ไม่ crash ตอน import ถ้ายังไม่มี API key)
+_embed_client = None
+
+def _get_embed_client():
+    global _embed_client
+    if _embed_client is None:
+        _embed_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _embed_client
+
 def embed_text(text: str) -> list[float]:
     """
-    เรียกใช้ Ollama (nomic-embed-text) เพื่อแปลงข้อความ Resume เป็น Vector
+    ใช้ Gemini Embedding API แปลงข้อความ Resume เป็น Vector (768 dims)
     """
     try:
-        # กำหนด Base URL ตาม config
-        client = ollama.Client(host=settings.OLLAMA_BASE_URL)
-        
-        # ส่งข้อความไป Embed (จำกัดความยาวเพื่อไม่ให้เกิน Context Window ของ Nomic)
-        response = client.embed(
-            model="nomic-embed-text",
-            input=text[:8000] 
+        client = _get_embed_client()
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text[:8000],
+            config={"output_dimensionality": 768}
         )
-        return response['embeddings'][0]
+        return result.embeddings[0].values
     except Exception as e:
-        print(f"⚠️ Vector Embedding Error: {e}")
-        raise ValueError("ไม่สามารถสร้าง Vector จาก Resume ได้ ตรวจสอบว่า Ollama รันอยู่หรือไม่")
+        print(f"⚠️ Gemini Embedding Error: {e}")
+        raise ValueError("ไม่สามารถสร้าง Vector จาก Resume ได้ ตรวจสอบ GEMINI_API_KEY")
+
 
 def search_matching_jobs(
     conn, 
     resume_vector: list[float], 
-    pool_size: int = 20, # <-- ดึงมาเผื่อเลย 20 งาน
+    pool_size: int = 20,
     location_filter: str = None,
     job_type_filter: str = None
 ) -> list[dict]:
@@ -62,70 +74,3 @@ def search_matching_jobs(
         raise ValueError("เกิดข้อผิดพลาดในการค้นหาข้อมูล")
     finally:
         cur.close()
-
-# def search_matching_jobs(
-#     conn, 
-#     resume_vector: list[float], 
-#     limit: int = 5,
-#     location_filter: str = None,
-#     job_type_filter: str = None
-# ) -> list[dict]:
-#     """
-#     ค้นหางานที่ตรงกับ Resume Vector มากที่สุดจาก PostgreSQL (pgvector)
-#     พร้อมคำนวณ Match Score (%)
-#     """
-#     # ใช้ RealDictCursor เพื่อให้ผลลัพธ์จาก DB ออกมาเป็น Dictionary (JSON-ready)
-#     cur = conn.cursor(cursor_factory=RealDictCursor)
-
-#     try:
-#         # สร้าง SQL Query พื้นฐาน
-#         # ใช้ <=> ใน pgvector เพื่อหา Cosine Distance
-#         # Similarity = 1 - Cosine Distance
-#         base_query = """
-#             SELECT 
-#                 j.id, 
-#                 j.title, 
-#                 j.company, 
-#                 j.location, 
-#                 j.salary, 
-#                 j.link, 
-#                 j.skills,
-#                 j.experience_years,
-#                 j.job_type,
-#                 ROUND((1 - (e.embedding <=> %s::vector))::numeric * 100, 2) AS match_score
-#             FROM jobs j
-#             JOIN job_embeddings e ON j.id = e.job_id
-#             WHERE 1=1
-#         """
-        
-#         # ตัวแปรที่จะส่งเข้าไปแทนที่ %s ใน SQL
-#         # แปลง list ของ float เป็น string format ที่ pgvector เข้าใจ: '[0.1, 0.2, ...]'
-#         vector_str = str(resume_vector)
-#         params = [vector_str]
-
-#         # --- ส่วนของ Hybrid Search (เพิ่ม Filter ด้วย SQL ธรรมดา) ---
-#         if location_filter:
-#             base_query += " AND j.location ILIKE %s"
-#             params.append(f"%{location_filter}%")
-            
-#         if job_type_filter and job_type_filter.lower() != "not specified":
-#             base_query += " AND j.job_type ILIKE %s"
-#             params.append(f"%{job_type_filter}%")
-
-#         # --- ส่วนของการจัดเรียงและจำกัดจำนวน ---
-#         # เรียงลำดับจากระยะห่างที่น้อยที่สุด (ความหมายใกล้เคียงสุด)
-#         base_query += " ORDER BY e.embedding <=> %s::vector LIMIT %s"
-#         params.extend([vector_str, limit])
-
-#         # รัน Query
-#         cur.execute(base_query, params)
-#         results = cur.fetchall()
-        
-#         return results
-
-#     except Exception as e:
-#         print(f"⚠️ Database Search Error: {e}")
-#         raise ValueError("เกิดข้อผิดพลาดในการค้นหาข้อมูลในฐานข้อมูล")
-    
-#     finally:
-#         cur.close()

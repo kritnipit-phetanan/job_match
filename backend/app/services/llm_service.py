@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 # โมเดลหลัก และโมเดลสำรอง
-MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash']
+MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash']
 
 @retry(
     stop=stop_after_attempt(3), # ลองซ้ำสูงสุด 3 ครั้ง
@@ -90,12 +90,13 @@ def analyze_batch_resume(resume_text: str, jobs_list: list[dict]) -> dict:
     TARGET JOBS:
     {json.dumps(simplified_jobs)}
 
+    IMPORTANT: Use the EXACT numeric "id" from each job as the key in "skill_gaps".
     Respond ONLY with a valid JSON in this exact format:
     {{
         "years_of_experience": 2,
         "skill_gaps": {{
-            "job_id_1": {{"matched": ["skillA"], "missing": ["skillB"]}},
-            "job_id_2": {{"matched": [], "missing": ["skillC"]}}
+            "101": {{"matched": ["Python", "SQL"], "missing": ["Spark"]}},
+            "102": {{"matched": ["AWS"], "missing": ["Docker", "K8s"]}}
         }}
     }}
     """
@@ -110,8 +111,10 @@ def analyze_batch_resume(resume_text: str, jobs_list: list[dict]) -> dict:
                 text = text.split("```")[1]
                 if text.startswith("json"):
                     text = text[4:]
-                    
-            return json.loads(text.strip())
+            
+            result = json.loads(text.strip())
+            logger.info(f"✅ Skill Gap keys from AI: {list(result.get('skill_gaps', {}).keys())[:5]}")
+            return result
             
         except APIError as e:
             logger.warning(f"⚠️ Model {model} failed with API Error: {e}")

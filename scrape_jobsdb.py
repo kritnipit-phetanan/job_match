@@ -257,7 +257,7 @@ def run():
     # ============================================================
     # ตั้งค่า
     # ============================================================
-    keyword = "data engineer"
+    keyword = "ai engineer"
     max_pages = 5
     formatted_keyword = keyword.replace(" ", "-").lower()
 

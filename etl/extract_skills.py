@@ -1,11 +1,16 @@
 """
-Extract Skills — ใช้ Ollama (llama3) แยก skills จาก Job Description
+Extract Skills — ใช้ Groq API (llama-3.1-8b-instant) แยก skills จาก Job Description
 """
 import json
 import re
-from itertools import chain
-import ollama as ollama_client
-from etl.config import OLLAMA_MODEL
+import time
+from groq import Groq, RateLimitError
+from etl.config import GROQ_API_KEY, GROQ_MODEL
+
+# Rate limiting — Groq free tier มี limit ~30 req/min
+_DELAY_BETWEEN_CALLS = 3    # วินาที ระหว่างแต่ละ call (ปกติ)
+_MAX_RETRIES = 5            # จำนวนครั้งที่ retry ถ้าเจอ 429
+_RETRY_BASE_DELAY = 10      # วินาที เริ่มต้น (exponential backoff: 10, 20, 40, ...)
 
 SYSTEM_PROMPT = """You are a Job Description analyzer. Extract structured information from the given Job Description.
 Return ONLY a valid JSON object with these fields:
@@ -22,10 +27,8 @@ Rules:
 
 def extract_skills(jd_text: str, model: str = None) -> dict:
     """
-    ส่ง JD text ไปให้ Ollama แยก skills ออกมาเป็น JSON
-    
-    Returns:
-        dict with keys: required_skills, experience_years, job_type
+    ส่ง JD text ไปให้ Groq (llama-3.1-8b-instant) แยก skills ออกมาเป็น JSON
+    พร้อม retry + exponential backoff สำหรับ 429 Rate Limit
     """
     if not jd_text or jd_text.strip() in ("", "Not Found", "Error", "No Link"):
         return {
@@ -34,45 +37,65 @@ def extract_skills(jd_text: str, model: str = None) -> dict:
             "job_type": "Not specified",
         }
 
-    model = model or OLLAMA_MODEL
+    model = model or GROQ_MODEL
 
     user_prompt = f"""Analyze this Job Description and extract the required information:
 
-    {jd_text[:8000]}"""  # ตัดไม่เกิน 8000 ตัวอักษร เพื่อความเร็ว
+    {jd_text[:8000]}"""
 
-    try:
-        response = ollama_client.chat(
-            model=model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            options={"temperature": 0.1},  # ลด randomness เพื่อให้ output คงที่
-        )
+    # ปิด SDK built-in retry เพื่อจัดการ 429 เอง
+    client = Groq(api_key=GROQ_API_KEY, max_retries=0)
 
-        content = response['message']['content'].strip()
-        
-        # พยายาม parse JSON จาก response
-        parsed = _parse_json_response(content)
-        
-        # Flatten skills (กัน Ollama คืน nested array)
-        parsed['required_skills'] = _flatten_skills(parsed.get('required_skills', []))
-        
-        return parsed
+    for attempt in range(_MAX_RETRIES):
+        try:
+            # Baseline delay ทุก call เพื่อไม่ให้ยิงถี่เกินไป
+            time.sleep(_DELAY_BETWEEN_CALLS)
 
-    except Exception as e:
-        print(f"   ⚠️ Ollama error: {e}")
-        return {
-            "required_skills": [],
-            "experience_years": "Not specified",
-            "job_type": "Not specified",
-        }
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.1,
+            )
+
+            content = response.choices[0].message.content.strip()
+            parsed = _parse_json_response(content)
+            parsed['required_skills'] = _flatten_skills(parsed.get('required_skills', []))
+            return parsed
+
+        except RateLimitError as e:
+            # Parse เวลาจาก error message โดยตรง เช่น "Please try again in 4.43s"
+            wait_time = None
+            error_msg = str(e)
+            match = re.search(r'try again in (\d+\.?\d*)s', error_msg)
+            if match:
+                wait_time = float(match.group(1)) + 1  # +1s buffer เผื่อ
+
+            if not wait_time:
+                wait_time = _RETRY_BASE_DELAY * (2 ** attempt)  # fallback: 10, 20, 40...
+
+            print(f"   ⏳ Rate limited (429). รอ {wait_time:.1f}s แล้ว retry ({attempt+1}/{_MAX_RETRIES})...")
+            time.sleep(wait_time)
+            continue
+
+        except Exception as e:
+            # Error อื่นๆ ไม่ต้อง retry
+            print(f"   ⚠️ Groq API error: {e}")
+            break
+
+    # retry หมดแล้วยังไม่ได้ → return default
+    print(f"   ❌ Groq API failed after {_MAX_RETRIES} retries")
+    return {
+        "required_skills": [],
+        "experience_years": "Not specified",
+        "job_type": "Not specified",
+    }
 
 
 def _flatten_skills(skills) -> list[str]:
-    """Flatten nested list เป็น flat list of strings
-    เช่น [['Python','SQL'],['AWS']] → ['Python','SQL','AWS']
-    """
+    """Flatten nested list เป็น flat list of strings"""
     if not skills:
         return []
     flat = []
@@ -85,36 +108,31 @@ def _flatten_skills(skills) -> list[str]:
 
 
 def _strip_json_comments(text: str) -> str:
-    """ลบ JS-style comments ออกจาก JSON text (// ... และ /* ... */)"""
-    # ลบ // single-line comments (ระวังไม่ลบ :// ใน URLs)
+    """ลบ JS-style comments ออกจาก JSON text"""
     text = re.sub(r'(?<!:)//.*?(?=\n|$)', '', text)
-    # ลบ /* block comments */
     text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
     return text
 
 
 def _parse_json_response(text: str) -> dict:
-    """พยายาม parse JSON จาก LLM response (อาจมี markdown wrapper หรือ comments)"""
+    """พยายาม parse JSON จาก LLM response"""
     default = {
         "required_skills": [],
         "experience_years": "Not specified",
         "job_type": "Not specified",
     }
 
-    # ลอง parse ตรงๆ ก่อน
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    # ลบ comments แล้วลองใหม่
     cleaned = _strip_json_comments(text)
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
 
-    # ลองหา JSON block ใน ```json ... ```
     match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
     if match:
         try:
@@ -122,7 +140,6 @@ def _parse_json_response(text: str) -> dict:
         except json.JSONDecodeError:
             pass
 
-    # ลองหา { ... } ตัวแรก
     match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', cleaned, re.DOTALL)
     if match:
         try:
@@ -130,7 +147,5 @@ def _parse_json_response(text: str) -> dict:
         except json.JSONDecodeError:
             pass
 
-    # ถ้า parse ไม่ได้เลย
     print(f"   ⚠️ ไม่สามารถ parse JSON: {text[:200]}...")
     return default
-

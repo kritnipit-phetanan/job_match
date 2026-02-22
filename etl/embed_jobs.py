@@ -1,47 +1,35 @@
 """
-Embed Jobs — ใช้ Ollama (nomic-embed-text) สร้าง vector embeddings จาก JD
+Embed Jobs — ใช้ Gemini Embedding API (gemini-embedding-001) สร้าง vector embeddings จาก JD
 """
-import ollama as ollama_client
-from etl.config import EMBEDDING_MODEL
+from google import genai
+from etl.config import GEMINI_API_KEY
 
 
-def embed_text(text: str, model: str = None) -> list[float]:
+def embed_text(text: str) -> list[float]:
     """
-    สร้าง vector embedding จาก text
-    
-    Args:
-        text: ข้อความที่จะ embed (JD, Resume, etc.)
-        model: ชื่อ embedding model (default: nomic-embed-text)
-    
-    Returns:
-        list[float] — 768-dimensional vector
+    สร้าง vector embedding จาก text (768 dims)
+    ใช้ Gemini Embedding API (gemini-embedding-001)
     """
     if not text or text.strip() in ("", "Not Found", "Error", "No Link"):
         return None
 
-    model = model or EMBEDDING_MODEL
-
     try:
-        response = ollama_client.embed(
-            model=model,
-            input=text[:8000],  # nomic-embed-text รองรับสูงสุด 8192 tokens
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text[:8000],
+            config={"output_dimensionality": 768}  # ให้ตรงกับ DB schema vector(768)
         )
-        # ollama.embed returns {"embeddings": [[...]]}
-        return response['embeddings'][0]
+        return result.embeddings[0].values
     except Exception as e:
-        print(f"   ⚠️ Embedding error: {e}")
+        print(f"   ⚠️ Gemini Embedding error: {e}")
         return None
 
 
-def embed_batch(texts: list[str], model: str = None) -> list[list[float]]:
-    """
-    สร้าง embeddings จากหลาย texts พร้อมกัน
-    
-    Returns:
-        list of 768-dim vectors (None สำหรับ text ที่ embed ไม่ได้)
-    """
+def embed_batch(texts: list[str]) -> list[list[float]]:
+    """สร้าง embeddings จากหลาย texts พร้อมกัน"""
     results = []
     for text in texts:
-        vec = embed_text(text, model)
+        vec = embed_text(text)
         results.append(vec)
     return results

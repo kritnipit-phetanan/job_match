@@ -1,7 +1,8 @@
 psycopg2-binary
 python-dotenv
-ollama
 pandas
 pgvector
 playwright
 playwright-stealth
+groq
+google-generativeai
