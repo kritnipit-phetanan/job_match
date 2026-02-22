@@ -25,3 +25,5 @@ pgdata/
 
 # OS
 .DS_Store
+
+local/
