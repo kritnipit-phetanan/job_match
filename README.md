@@ -119,3 +119,6 @@ python -m etl.load_to_db
 - **Automation:** `.github/workflows/scrape.yml` configured for nightly unattended runs.
 
 ---
+
+## 🔮 Next Steps (TODO)
+- **Expand Job Diversity:** Currently, the dataset primarily focuses on STEM and Data-related roles. Future updates will expand scraping pipelines to cover a wider variety of career fields and industries.
