@@ -62,6 +62,7 @@ export default function Home() {
   const confirmGoHome = () => {
     setShowConfirmHome(false);
     setHasResults(false);
+    setShowUploadModal(false);
     // Add small delay to let state flush, ensuring clean unmount
     setTimeout(() => setResetKey(prev => prev + 1), 10);
   };
