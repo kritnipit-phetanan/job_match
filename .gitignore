@@ -3,6 +3,7 @@
 .env.local
 chrome_profile/
 jobsdb_cookies.json
+jobsdb_cookies_min.json
 
 # Python
 __pycache__/
@@ -15,6 +16,10 @@ venv/
 *.csv
 *.png
 failed_page.html
+
+# Unused scripts
+reset_db.py
+manage_duplicate.py
 
 # Backup files
 test/
