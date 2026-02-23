@@ -84,7 +84,7 @@ This project is divided into four main phases, following the standard Data Engin
 - [x] **Frontend**: Deploy Next.js app to Vercel for optimal Server-Side Rendering (SSR) and edge caching.
 
 ### Step 5: CI/CD & Automation
-- [ ] Configure **GitHub Actions** cron job to run the Python scraper pipeline (etl/) automatically every night and upsert fresh data to Supabase.
+- [x] Configure **GitHub Actions** cron job to run the Python scraper pipeline (etl/) automatically every night and upsert fresh data to Supabase.
 
 ## 🔮 Future Improvements
 - [x] **Salary Trends:** Visualize average salaries for specific tech stacks.
