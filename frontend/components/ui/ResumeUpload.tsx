@@ -43,7 +43,8 @@ export default function ResumeUpload() {
     });
 
     // 1. ยิง API ค้นหางาน
-    const handleAnalyze = async () => {
+    const handleAnalyze = async (e: React.FormEvent) => {
+        e.preventDefault();
         if (!file) return;
         setIsAnalyzing(true);
         setError(null);
@@ -178,7 +179,7 @@ export default function ResumeUpload() {
                             )}
                             <div className="flex gap-4 w-full justify-center mt-8">
                                 <Button variant="outline" onClick={() => { setFile(null); setMatchedJobs(null); setError(null); setCoverLetters({}); }} disabled={isAnalyzing} className="w-32"><X className="w-4 h-4 mr-2" /> ยกเลิก</Button>
-                                <Button onClick={handleAnalyze} disabled={isAnalyzing} className="w-48">
+                                <Button type="button"onClick={handleAnalyze} disabled={isAnalyzing} className="w-48">
                                     {isAnalyzing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> กำลังวิเคราะห์...</> : "✨ วิเคราะห์ Resume"}
                                 </Button>
                             </div>
