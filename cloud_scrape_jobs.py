@@ -103,7 +103,7 @@ def smart_wait_for_jobs(page, max_retries=30) -> bool:
 # Main Pipeline
 # ============================================================
 def run():
-    keyword = "ai engineer"
+    keyword = "engineer"
     max_pages = 5
     formatted_keyword = keyword.replace(" ", "-").lower()
 
