@@ -19,6 +19,7 @@ failed_page.html
 # Backup files
 test/
 test_data/
+test_resume.pdf
 
 # Docker
 pgdata/

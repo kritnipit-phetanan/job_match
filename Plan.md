@@ -79,9 +79,9 @@ This project is divided into four main phases, following the standard Data Engin
 - [x] **Build Cover Letter Generator**: Real-time UI with a Streaming text effect to show Gemini AI typing the letter dynamically.
 
 ### Step 4: Cloud Deployment (Production)
-- [ ] **Database**: Migrate local PostgreSQL to Supabase (Free tier with native pgvector support).
-- [ ] **Backend API**: Deploy FastAPI Docker container to Render or Railway (Easy auto-deploy from GitHub).
-- [ ] **Frontend**: Deploy Next.js app to Vercel for optimal Server-Side Rendering (SSR) and edge caching.
+- [x] **Database**: Migrate local PostgreSQL to Supabase (Free tier with native pgvector support).
+- [x] **Backend API**: Deploy FastAPI Docker container to Render or Railway (Easy auto-deploy from GitHub).
+- [x] **Frontend**: Deploy Next.js app to Vercel for optimal Server-Side Rendering (SSR) and edge caching.
 
 ### Step 5: CI/CD & Automation
 - [ ] Configure **GitHub Actions** cron job to run the Python scraper pipeline (etl/) automatically every night and upsert fresh data to Supabase.
@@ -89,7 +89,7 @@ This project is divided into four main phases, following the standard Data Engin
 ## 🔮 Future Improvements
 - [x] **Salary Trends:** Visualize average salaries for specific tech stacks.
 - [ ] **Course Recommendation:** Suggest courses (Udemy/Coursera) for missing skills.
-- [ ] **Email Alerts:** Notify users when a >90% match job is found.
+- [ ] **Social Media Alerts:** Notify users when a >90% match job is found.
 - [ ] **AI Mock Interviewer 🎙️:** Generate personalized interview questions based on the candidate's *Missing Skills* and the specific Job Description, allowing users to practice and receive AI feedback.
 - [ ] **Resume Roasting / Optimization 🔥:** An AI-powered critique mode that provides brutally honest (or highly professional) feedback to improve resume bullet points and action verbs.
 - [ ] **Career Path Evolution Roadmap 🗺️:** A visual progression tree showing the stepping stones from the user's current role to their dream role, predicting the next skills to acquire.

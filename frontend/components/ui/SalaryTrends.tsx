@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ErrorBar
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, DollarSign } from "lucide-react";
 import axios from "axios";
@@ -16,13 +14,12 @@ interface SalarySkill {
     avg_salary: number;
 }
 
-// ----- Gradient สีฟ้า → ม่วง -----
+// Warm purple-brown tones
 const SALARY_COLORS = [
-    "#7c3aed", "#8b5cf6", "#a78bfa",  // ม่วง (สูงสุด)
-    "#6366f1", "#818cf8",              // indigo
-    "#3b82f6", "#60a5fa",              // ฟ้า
-    "#06b6d4", "#22d3ee",              // cyan
-    "#14b8a6", "#2dd4bf",              // teal (ต่ำสุด)
+    "#6b3a2a", "#7d4a36", "#8f5a42",
+    "#a16b4e", "#b37c5a", "#c48d66",
+    "#d69e72", "#e0b08a", "#eac2a2",
+    "#f0d4ba",
 ];
 
 function getSalaryColor(index: number, total: number): string {
@@ -35,129 +32,129 @@ function getSalaryColor(index: number, total: number): string {
 }
 
 function formatSalary(value: number): string {
-    if (value >= 1000) {
-        return `฿${(value / 1000).toFixed(0)}k`;
-    }
-    return `฿${value.toLocaleString()}`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+    return value.toLocaleString();
 }
 
-// ----- Custom Tooltip -----
 function SalaryTooltip({ active, payload }: any) {
     if (!active || !payload?.[0]) return null;
     const data = payload[0].payload;
     return (
-        <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg px-4 py-3">
-            <p className="font-bold text-sm">{data.name}</p>
-            <div className="mt-1.5 space-y-0.5 text-xs">
+        <div className="bg-card text-foreground border border-border rounded-lg shadow-lg px-3 py-2">
+            <p className="font-semibold text-sm">{data.name}</p>
+            <div className="mt-1 space-y-0.5 text-xs">
                 <p className="text-muted-foreground">
-                    เฉลี่ย <span className="font-semibold text-foreground">฿{data.avg_salary.toLocaleString()}</span>/เดือน
+                    Avg <span className="font-semibold text-foreground">{data.avg_salary.toLocaleString()}</span>/mo
                 </p>
                 <p className="text-muted-foreground">
-                    ช่วง ฿{data.avg_min.toLocaleString()} – ฿{data.avg_max.toLocaleString()}
+                    Range {data.avg_min.toLocaleString()} – {data.avg_max.toLocaleString()}
                 </p>
                 <p className="text-muted-foreground">
-                    จาก <span className="font-semibold text-foreground">{data.job_count}</span> งาน
+                    From <span className="font-semibold text-foreground">{data.job_count}</span> jobs
                 </p>
             </div>
         </div>
     );
 }
 
-export default function SalaryTrends() {
+export default function SalaryTrends({ activeChart, setActiveChart }: { activeChart?: string, setActiveChart?: (v: any) => void }) {
     const [skills, setSkills] = useState<SalarySkill[]>([]);
     const [totalJobs, setTotalJobs] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/analytics/salary-trends`, { params: { limit: 20 } })
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/analytics/salary-trends`, { params: { limit: 15 } })
             .then(res => {
-                // เพิ่ม errorBar data สำหรับแสดง range
-                const enriched = res.data.skills.map((s: SalarySkill) => ({
-                    ...s,
-                    errorLow: s.avg_salary - s.avg_min,
-                    errorHigh: s.avg_max - s.avg_salary,
-                }));
-                setSkills(enriched);
+                setSkills(res.data.skills);
                 setTotalJobs(res.data.total_jobs_with_salary);
             })
             .catch(err => {
                 console.error("Salary Trends API Error:", err);
-                setError("ไม่สามารถโหลดข้อมูลเงินเดือนได้");
+                setError("Could not load salary data");
             })
             .finally(() => setLoading(false));
     }, []);
 
     if (loading) {
         return (
-            <Card className="w-full shadow-sm border-border">
-                <CardContent className="p-12 flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground text-sm">กำลังโหลดข้อมูลเงินเดือน...</p>
+            <Card className="w-full h-[500px] shadow-sm border-border">
+                <CardContent className="p-10 flex flex-col items-center justify-center gap-2 h-full">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <p className="text-muted-foreground text-sm">Loading salary data...</p>
                 </CardContent>
             </Card>
         );
     }
 
-    if (error || skills.length === 0) {
-        return null;
-    }
+    if (error || skills.length === 0) return null;
 
     return (
-        <Card className="w-full shadow-sm border-border overflow-hidden">
-            <CardContent className="p-6 md:p-8">
-                {/* Header */}
-                <div className="mb-6">
-                    <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-                        <DollarSign className="w-6 h-6 text-violet-500" />
-                        Salary Trends by Skill
-                    </h2>
-                    <p className="text-muted-foreground mt-1.5 text-sm">
-                        เงินเดือนเฉลี่ยต่อ Skill จากงานที่เปิดเผยเงินเดือน <span className="font-semibold text-foreground">{totalJobs}</span> ตำแหน่ง
+        <Card className="w-full h-[500px] shadow-sm border-border flex flex-col">
+            <CardContent className="px-5 py-4 flex-1 flex flex-col relative w-full">
+                <div className="mb-2 flex flex-col items-center justify-center w-full relative">
+                    {/* Centered Toggles */}
+                    <div className="flex items-center gap-1 p-1 bg-secondary rounded-full shadow-inner border border-border/50 z-10 w-fit">
+                        <button
+                            onClick={() => setActiveChart?.("demand")}
+                            className={`px-8 py-1.5 rounded-full text-sm font-bold transition-all duration-300 ${activeChart === "demand"
+                                ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                                }`}
+                        >
+                            Market Demand
+                        </button>
+                        <button
+                            onClick={() => setActiveChart?.("salary")}
+                            className={`px-8 py-1.5 rounded-full text-sm font-bold transition-all duration-300 ${(!activeChart || activeChart === "salary")
+                                ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                                }`}
+                        >
+                            Salary Trends
+                        </button>
+                    </div>
+                    {/* Subtitle */}
+                    <p className="text-xs text-muted-foreground mt-2">
+                        Average salary by skill from {totalJobs} listings
                     </p>
+
+                    {/* Legend (Absolute right, hidden on very small screens) */}
+                    <div className="absolute right-0 top-0 hidden sm:flex flex-col items-end gap-1">
+                        <span className="text-[9px] text-muted-foreground/80 font-medium uppercase tracking-wider">Salary</span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-foreground font-medium">High</span>
+                            <div className="h-2.5 w-20 rounded-full" style={{ background: "linear-gradient(to right, #6b3a2a, #f0d4ba)" }} />
+                            <span className="text-[10px] text-muted-foreground">Low</span>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground mt-1 whitespace-nowrap hidden sm:block">
+                            * Only skills with 3+ salary data points shown
+                        </p>
+                    </div>
                 </div>
 
-                {/* Bar Chart */}
-                <div className="w-full h-[620px]">
+                <div className="w-full flex-1">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={skills}
-                            layout="vertical"
-                            margin={{ left: 10, right: 40, top: 5, bottom: 5 }}
-                        >
-                            <XAxis
-                                type="number"
-                                tickFormatter={formatSalary}
-                                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                                axisLine={false}
-                                tickLine={false}
+                        <BarChart data={skills} layout="vertical" margin={{ left: -15, right: 10, top: 0, bottom: 0 }}>
+                            <XAxis type="number" tickFormatter={formatSalary}
+                                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                                axisLine={false} tickLine={false}
                             />
                             <YAxis
-                                type="category"
-                                dataKey="name"
-                                width={130}
-                                tick={{ fontSize: 13, fill: "var(--foreground)" }}
-                                axisLine={false}
-                                tickLine={false}
+                                type="category" dataKey="name" width={90}
+                                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                                interval={0}
+                                axisLine={false} tickLine={false}
                             />
-                            <Tooltip content={<SalaryTooltip />} cursor={{ fill: "var(--accent)", opacity: 0.5 }} />
-                            <Bar dataKey="avg_salary" radius={[0, 8, 8, 0]} barSize={20}>
+                            <Tooltip content={<SalaryTooltip />} cursor={{ fill: "var(--accent)", opacity: 0.3 }} />
+                            <Bar dataKey="avg_salary" radius={[0, 4, 4, 0]} barSize={16}>
                                 {skills.map((entry, index) => (
-                                    <Cell
-                                        key={entry.name}
-                                        fill={getSalaryColor(index, skills.length)}
-                                        style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.12))" }}
-                                    />
+                                    <Cell key={entry.name} fill={getSalaryColor(index, skills.length)} />
                                 ))}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-
-                {/* Footer note */}
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                    * แสดงเฉพาะ Skills ที่มีข้อมูลเงินเดือนอย่างน้อย 3 งาน | เส้นขีดแสดงช่วงเงินเดือนเฉลี่ย (min–max)
-                </p>
             </CardContent>
         </Card>
     );
