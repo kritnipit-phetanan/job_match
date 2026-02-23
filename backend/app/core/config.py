@@ -3,7 +3,9 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 
 # .env อยู่ที่ root ของโปรเจกต์ (parent ของ backend/)
-_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+# บน Cloud (Render Docker) อาจไม่มีไฟล์ .env → ใช้ OS env vars แทน
+_ENV_FILE_PATH = Path(__file__).resolve().parents[3] / ".env"
+_ENV_FILE = str(_ENV_FILE_PATH) if _ENV_FILE_PATH.exists() else None
 
 class Settings(BaseSettings):
     # Database — รองรับทั้ง Supabase (DATABASE_URL) และ Local Docker (individual vars)

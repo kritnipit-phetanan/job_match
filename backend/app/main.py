@@ -11,6 +11,7 @@ app = FastAPI(
 
 # CORS — อ่าน origins จาก env (comma-separated), default: localhost
 cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+print(f"🌐 CORS allowed origins: {cors_origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,4 +28,5 @@ def read_root():
     return {
         "status": "online",
         "message": "JobMatcher Brain is running!",
+        "cors_origins": cors_origins,
     }
