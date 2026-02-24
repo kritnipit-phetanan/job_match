@@ -1,7 +1,7 @@
 # JobMatcher 🎯
 **AI-Powered Resume to Job Matching & Analytics Platform**
 
-JobMatcher is a full-stack automated pipeline that scrapes real job listings, analyzes them using AI (Groq + Gemini), and provides a smart frontend interface for users to upload their resumes. The system calculates a match score, identifies skill gaps, analyzes market demand/salary trends, and even generates personalized cover letters.
+JobMatcher is an AI-powered platform designed to present the most suitable career opportunities for you using only your resume. Simply upload your CV, and our system instantly analyzes your profile against real, up-to-date job listings. We calculate a precise match score, highlight missing skills, and even generate a personalized cover letter to help you land your dream job faster.
 
 ![JobMatcher Overview](https://img.shields.io/badge/Status-Active-success)
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
@@ -9,26 +9,27 @@ JobMatcher is a full-stack automated pipeline that scrapes real job listings, an
 ![Next.js](https://img.shields.io/badge/Next.js-15-black)
 ![Supabase](https://img.shields.io/badge/Supabase-pgvector-emerald)
 
-## 🌟 Key Features
+## Key Features
 
-### 1. 🤖 AI Matchmaker (RAG)
-- **Semantic Search:** Uses `pgvector` and Gemini Embeddings to find jobs that semantically match your resume, rather than just exact keyword matching.
-- **Skill Gap Analysis:** Highlights exactly which required skills from the job description are missing from your resume.
+### 1. AI Matchmaker (RAG)
+- **Instant Job Matching:** Upload your resume and instantly see the most suitable job listings tailored to your experience.
+- **Semantic Search:** Uses `pgvector` and Gemini Embeddings to find jobs that semantically match your background, going beyond simple keyword matching.
+- **Skill Gap Analysis:** Highlights exactly which required skills from the job description are missing from your resume, so you know exactly what to improve.
 - **Cover Letter Generator:** Automatically drafts a tailored cover letter based on your resume and the specific job requirements using LLMs.
 
-### 2. 📊 Market Analytics Dashboard
+### 2. Market Analytics Dashboard
 - **Market Demand Heatmap:** Visualizes which tech skills are currently most requested in the market.
 - **Salary Trends:** Analyzes and plots average salary ranges mapped against specific tools and technologies.
 - **Data Freshness:** Powered by an automated nightly scraping pipeline (via GitHub Actions) ensuring data is always up-to-date.
 
-### 3. 🕸️ Automated Cloud Scraping Pipeline
+### 3. Automated Cloud Scraping Pipeline
 - Scrapes job data using Playwright with advanced Anti-Detection techniques (stealth mode, human-like scrolling, UA rotation).
 - Cloud-ready scripts designed to run on GitHub Actions.
 - Robust ETL pipeline that extracts structured data (skills, experience) using Groq API and generates embeddings via Google Gemini.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 The project follows a modern Data Engineering + Full-Stack architecture:
 
@@ -56,7 +57,7 @@ graph TD
 
 ---
 
-## 🚀 Getting Started (Local Development)
+## Getting Started (Local Development)
 
 ### Prerequisites
 - Python 3.11+
@@ -111,7 +112,7 @@ python -m etl.load_to_db
 
 ---
 
-## ☁️ Cloud Deployment
+## Cloud Deployment
 
 - **Database:** Supabase Cloud (Free Tier)
 - **Backend:** `render.yaml` provided for easy deployment to Render.
@@ -120,5 +121,5 @@ python -m etl.load_to_db
 
 ---
 
-## 🔮 Next Steps (TODO)
+## Next Steps (TODO)
 - **Expand Job Diversity:** Currently, the dataset primarily focuses on STEM and Data-related roles. Future updates will expand scraping pipelines to cover a wider variety of career fields and industries.

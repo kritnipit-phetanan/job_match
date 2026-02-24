@@ -16,7 +16,7 @@ on:
 jobs:
   scrape-and-etl:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       # ---------------------------------------------------------
@@ -26,13 +26,13 @@ jobs:
         uses: actions/checkout@v4
 
       # ---------------------------------------------------------
-      # 1.5. Random Delay (08:15 -> 14:30)
+      # 1.5. Random Delay (max 30 minutes)
       # ---------------------------------------------------------
       - name: "Sleep for a random amount of time"
         run: |
-          # สุ่มเลขตั้งแต่วินาทีที่ 0 ถึง 22,500 (เท่ากับ 6 ชั่วโมง 15 นาที) 
-          # ครอบคลุมตั้งแต่ 08:15 น. ไปจนถึง 14:30 น. ของเวลาไทย
-          DELAY=$((RANDOM % 22500))
+          # สุ่มเลขตั้งแต่วินาทีที่ 0 ถึง 1800 (เท่ากับ 30 นาที) 
+          # เพื่อป้องกันไม่ให้กินเวลา execution นานเกิน 1 ชั่วโมงจนโดนบังคับจบ
+          DELAY=$((RANDOM % 1800))
           echo "Sleeping for $DELAY seconds before starting pipeline..."
           sleep $DELAY
 
