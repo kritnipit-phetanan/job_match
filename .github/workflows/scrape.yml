@@ -5,10 +5,10 @@
 name: Nightly Scrape & ETL
 
 on:
-  # รันอัตโนมัติทุกวันเริ่มต้นที่ 05:45 UTC (12:45 เวลาไทย)
+  # รันอัตโนมัติทุกวันเริ่มต้นที่ 01:45 UTC (08:45 เวลาไทย)
   # (จากนั้นจะมีการใช้ sleep เพื่อสุ่มดีเลย์ไปถึง 14:30)
   schedule:
-    - cron: '45 5 * * *'
+    - cron: '45 1 * * *'
 
   # รัน manual ได้จาก GitHub UI
   workflow_dispatch:
@@ -30,9 +30,9 @@ jobs:
       # ---------------------------------------------------------
       - name: "Sleep for a random amount of time"
         run: |
-          # สุ่มเลขตั้งแต่วินาทีที่ 0 ถึง 1800 (เท่ากับ 30 นาที) 
+          # สุ่มเลขตั้งแต่วินาทีที่ 0 ถึง 900 (เท่ากับ 15 นาที) 
           # เพื่อป้องกันไม่ให้กินเวลา execution นานเกิน 1 ชั่วโมงจนโดนบังคับจบ
-          DELAY=$((RANDOM % 1800))
+          DELAY=$((RANDOM % 900))
           echo "Sleeping for $DELAY seconds before starting pipeline..."
           sleep $DELAY
 
