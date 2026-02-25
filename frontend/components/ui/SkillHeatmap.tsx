@@ -100,7 +100,7 @@ export default function SkillHeatmap({ activeChart, setActiveChart }: { activeCh
                     </div>
                     {/* Subtitle */}
                     <p className="text-xs text-muted-foreground mt-2">
-                        Top skills from {totalJobs} job listings
+                        Top skills from all job listings
                     </p>
 
                     {/* Legend (Absolute right, hidden on very small screens) */}

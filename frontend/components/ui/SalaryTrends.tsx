@@ -116,7 +116,7 @@ export default function SalaryTrends({ activeChart, setActiveChart }: { activeCh
                     </div>
                     {/* Subtitle */}
                     <p className="text-xs text-muted-foreground mt-2">
-                        Average salary by skill from {totalJobs} listings
+                        Average salary by skill from all listings
                     </p>
 
                     {/* Legend (Absolute right, hidden on very small screens) */}
