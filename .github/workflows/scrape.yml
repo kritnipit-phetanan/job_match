@@ -111,3 +111,12 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python -m etl.load_to_db
+
+      # ---------------------------------------------------------
+      # 7. Repair — รีเซ็ตงานที่มีปัญหา (skills=[], JD='Not Found')
+      #    เพื่อให้รอบถัดไปทำใหม่อัตโนมัติ
+      # ---------------------------------------------------------
+      - name: "Repair: Reset broken jobs"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python repair_jobs.py fix

@@ -15,15 +15,24 @@ _RETRY_BASE_DELAY = 15      # วินาที เริ่มต้น (expon
 
 SYSTEM_PROMPT = """You are a Job Description analyzer. Extract structured information from the given Job Description.
 Return ONLY a valid JSON object with these fields:
-- "required_skills": array of technical skills/tools (e.g., ["Python", "SQL", "AWS", "Airflow"])
+- "required_skills": array of skills (e.g., ["Python", "SQL", "Lean", "AutoCAD", "Project Management"])
 - "experience_years": string describing required experience (e.g., "3-5 years", "5+ years", "Not specified")
 - "job_type": one of "Full-time", "Contract", "Internship", "Part-time", or "Not specified"
 
 Rules:
-- Include programming languages, frameworks, databases, cloud services, tools
+- Extract ALL types of skills mentioned or implied in the JD, including but not limited to:
+  • Programming languages, frameworks, databases, cloud services
+  • Engineering tools (AutoCAD, SolidWorks, PLC, SCADA, SAP, etc.)
+  • Methodologies (Lean, Six Sigma, Kaizen, 5S, Agile, Scrum, etc.)
+  • Certifications & standards (ISO, PMP, CFA, etc.)
+  • Domain skills (Quality Control, Preventive Maintenance, Calibration, etc.)
+  • Management skills (Team Leadership, Project Management, Production Planning, etc.)
 - Normalize skill names (e.g., "Postgres" → "PostgreSQL", "JS" → "JavaScript")
 - If a field is not mentioned in the JD, use "Not specified"
-- Return ONLY the JSON, no explanations"""
+- Return ONLY the JSON object, nothing else
+- Do NOT add any comments, annotations, or notes inside the JSON
+- Do NOT add parenthetical remarks like (implied) or (assumed) after values
+- Every value in the arrays must be a plain string with no extra text"""
 
 
 def extract_skills(jd_text: str, model: str = None) -> dict:
@@ -115,6 +124,19 @@ def _strip_json_comments(text: str) -> str:
     return text
 
 
+def _clean_llm_json(text: str) -> str:
+    """
+    ลบ inline comments ที่ LLM ชอบแทรกใน JSON เช่น:
+      "AWS" (implied, but not explicitly mentioned),
+    → "AWS",
+    """
+    # ลบ (parenthetical comments) ที่อยู่หลัง quoted string
+    text = re.sub(r'"\s*\([^)]*\)', '"', text)
+    # ลบ trailing comma ก่อน ] (JSON ไม่อนุญาต)
+    text = re.sub(r',\s*]', ']', text)
+    return text
+
+
 def _parse_json_response(text: str) -> dict:
     """พยายาม parse JSON จาก LLM response"""
     default = {
@@ -123,28 +145,32 @@ def _parse_json_response(text: str) -> dict:
         "job_type": "Not specified",
     }
 
+    # ลอง parse ตรงๆ ก่อน
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    cleaned = _strip_json_comments(text)
+    # ลบ comments + inline annotations แล้วลองใหม่
+    cleaned = _clean_llm_json(_strip_json_comments(text))
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
 
+    # ลอง extract จาก code block
     match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
     if match:
         try:
-            return json.loads(_strip_json_comments(match.group(1)))
+            return json.loads(_clean_llm_json(_strip_json_comments(match.group(1))))
         except json.JSONDecodeError:
             pass
 
+    # ลอง regex หา JSON object
     match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', cleaned, re.DOTALL)
     if match:
         try:
-            return json.loads(match.group(0))
+            return json.loads(_clean_llm_json(match.group(0)))
         except json.JSONDecodeError:
             pass
 
