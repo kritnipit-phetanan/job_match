@@ -7,6 +7,7 @@ from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 import time
 import random
+import sys
 
 from scraper_db import (
     get_connection, get_existing_links, upsert_job,
@@ -177,7 +178,7 @@ def run():
             page.screenshot(path="cloud_failed.png")
             browser.close()
             conn.close()
-            return
+            sys.exit(1)
 
         save_cookies(context)
 

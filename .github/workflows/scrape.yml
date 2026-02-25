@@ -56,13 +56,41 @@ jobs:
 
       # ---------------------------------------------------------
       # 4. Phase 1 — Scrape job listings → upsert เข้า DB
+      #    Retry สูงสุด 2 ครั้ง
       # ---------------------------------------------------------
       - name: "Phase 1: Scrape job listings"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JOBSDB_COOKIES: ${{ secrets.JOBSDB_COOKIES }}
           HEADLESS: "true"
-        run: python cloud_scrape_jobs.py
+        run: |
+          for attempt in 1 2; do
+            echo "=== Phase 1: Attempt $attempt ==="
+            if python cloud_scrape_jobs.py; then
+              echo "✅ Phase 1 succeeded on attempt $attempt"
+              break
+            else
+              echo "❌ Phase 1 failed on attempt $attempt"
+              if [ $attempt -lt 2 ]; then
+                echo "⏳ Waiting 60s before retry..."
+                sleep 60
+              else
+                echo "⚠️ Phase 1 failed after 2 attempts — continuing to Phase 2 & ETL"
+              fi
+            fi
+          done
+
+      # ---------------------------------------------------------
+      # 4.5. Upload debug screenshot (ถ้ามี)
+      # ---------------------------------------------------------
+      - name: Upload debug screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: "*.png"
+          if-no-files-found: ignore
+          retention-days: 7
 
       # ---------------------------------------------------------
       # 5. Phase 2 — Scrape JD details → update description

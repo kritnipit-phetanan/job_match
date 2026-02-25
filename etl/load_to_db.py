@@ -1,5 +1,8 @@
 """
-Load to DB — อ่าน CSV, extract skills, สร้าง Semantic Text, embed, แล้ว upsert เข้า PostgreSQL
+Load to DB — Extract skills, สร้าง Semantic Text, embed, แล้ว upsert เข้า PostgreSQL
+รองรับ 2 โหมด:
+  - CSV Mode (local):  อ่านจาก CSV file
+  - DB Mode (cloud):   อ่านจาก DB โดยตรง (สำหรับ GitHub Actions ที่ Phase 1-2 เขียนเข้า DB แล้ว)
 """
 import psycopg2
 import psycopg2.extras
@@ -45,6 +48,40 @@ def prepare_semantic_text(title: str, skills_data: dict, raw_jd: str) -> str:
     """.strip()
     
     return rich_text
+
+
+def get_jobs_from_db(conn) -> pd.DataFrame:
+    """
+    ดึงงานจาก DB ที่มี JD แล้วแต่ยังไม่ได้ทำ ETL (ยังไม่มี embedding)
+    ใช้สำหรับ Cloud mode — Phase 1-2 เขียน jobs+JD เข้า DB แล้ว
+    """
+    query = """
+        SELECT j.id, j.title, j.company, j.location, j.salary, j.link, j.description
+        FROM jobs j
+        LEFT JOIN job_embeddings e ON j.id = e.job_id
+        WHERE j.description IS NOT NULL
+          AND j.description NOT IN ('', 'Not Found', 'Error', 'No Link')
+          AND e.job_id IS NULL
+        ORDER BY j.id
+    """
+    return pd.read_sql(query, conn)
+
+
+def update_job_skills(cur, job_id: int, skills_data: dict):
+    """Update skills/experience/job_type ของ job ที่มีอยู่แล้วใน DB"""
+    cur.execute("""
+        UPDATE jobs SET
+            skills = %s,
+            experience_years = %s,
+            job_type = %s,
+            updated_at = NOW()
+        WHERE id = %s
+    """, (
+        json.dumps(skills_data.get('required_skills', []), ensure_ascii=False),
+        skills_data.get('experience_years', 'Not specified'),
+        skills_data.get('job_type', 'Not specified'),
+        job_id,
+    ))
 
 
 
@@ -115,16 +152,24 @@ def upsert_embedding(cur, job_id: int, embedding: list, model: str = 'gemini-emb
     """, (job_id, str(embedding), model))
 
 
-def run_pipeline(csv_path: str = None, limit: int = None):
+def run_pipeline(csv_path: str = None, limit: int = None, from_db: bool = False):
     """
     ETL Pipeline หลัก (Updated for Semantic Embedding):
-    1. อ่าน CSV
+    1. อ่านข้อมูล (CSV หรือ DB)
     2. Extract skills (Groq — llama-3.1-8b-instant)
     3. Construct Rich Text (Title + Skills + Summary)
     4. Embed Rich Text (Gemini Embedding)
     5. Upsert เข้า PostgreSQL
+
+    Auto-detect: ถ้าไม่มี CSV → ใช้ DB mode (สำหรับ cloud)
     """
     csv_path = csv_path or CSV_FULL_DATA
+
+    # Auto-detect: ถ้า force DB mode หรือ CSV ไม่มี → ใช้ DB mode
+    if from_db or not os.path.exists(csv_path):
+        if not from_db:
+            print(f"📂 ไม่พบ CSV ({os.path.basename(csv_path)}) → สลับเป็น DB mode")
+        return run_pipeline_from_db(limit=limit)
 
     print(f"📂 โหลดข้อมูลจาก {os.path.basename(csv_path)}...")
     df = pd.read_csv(csv_path)
@@ -293,8 +338,95 @@ def run_pipeline(csv_path: str = None, limit: int = None):
     print(f"{'='*50}")
 
 
+def run_pipeline_from_db(limit: int = None):
+    """
+    ETL Pipeline สำหรับ Cloud: อ่าน jobs จาก DB → Extract Skills → Embed → Update DB
+    ใช้เมื่อ Phase 1-2 (scraping) เขียนเข้า DB แล้ว ไม่ต้องอ่านจาก CSV
+    """
+    print("☁️  Cloud Mode: อ่านข้อมูลจาก DB โดยตรง")
+
+    conn = get_connection()
+
+    # ดึงงานที่มี JD แต่ยังไม่มี embedding
+    df = get_jobs_from_db(conn)
+
+    if limit:
+        df = df.head(limit)
+
+    print(f"📊 จะประมวลผล {len(df)} งาน (มี JD แต่ยังไม่มี embedding)\n")
+
+    if len(df) == 0:
+        print("✅ ไม่มีงานใหม่ที่ต้องประมวลผล!")
+        conn.close()
+        return
+
+    cur = conn.cursor()
+    success = 0
+    errors = 0
+
+    for idx, row in df.iterrows():
+        title = row['title']
+        job_id = row['id']
+        jd = row['description']
+
+        print(f"[{idx+1}/{len(df)}] {title[:50]}...")
+
+        try:
+            # STEP 1: Extract Skills
+            skills_data = extract_skills(jd)
+
+            if skills_data['required_skills']:
+                print(f"   🧠 Skills: {skills_data['required_skills'][:5]}...")
+            else:
+                print(f"   🧠 ไม่พบ skills")
+
+            # STEP 2: Construct Semantic Rich Text
+            semantic_text = prepare_semantic_text(title, skills_data, jd)
+            print(f"   📝 Semantic Text Len: {len(semantic_text)} chars")
+
+            # STEP 3: Embed
+            embedding = embed_text(semantic_text)
+
+            if embedding:
+                print(f"   📐 Embedding: {len(embedding)} dims")
+            else:
+                print(f"   ⚠️ Embedding ล้มเหลว")
+
+            # STEP 4: Update skills + Upsert embedding
+            update_job_skills(cur, job_id, skills_data)
+
+            if embedding:
+                upsert_embedding(cur, job_id, embedding)
+
+            conn.commit()
+            success += 1
+            print(f"   ✅ บันทึก DB สำเร็จ (id={job_id})")
+
+        except Exception as e:
+            conn.rollback()
+            errors += 1
+            print(f"   ❌ Error: {e}")
+
+    cur.close()
+    conn.close()
+
+    print(f"\n{'='*50}")
+    print(f"🎉 ETL Pipeline (Cloud Mode) เสร็จสิ้น!")
+    print(f"   ✅ Processed & Saved: {success}")
+    print(f"   ❌ Errors: {errors}")
+    print(f"{'='*50}")
+
+
 if __name__ == '__main__':
     limit = None
-    if len(sys.argv) > 2 and sys.argv[1] == '--limit':
-        limit = int(sys.argv[2])
-    run_pipeline(limit=limit)
+    from_db = False
+
+    args = sys.argv[1:]
+    if '--from-db' in args:
+        from_db = True
+        args.remove('--from-db')
+    if '--limit' in args:
+        limit_idx = args.index('--limit')
+        limit = int(args[limit_idx + 1])
+
+    run_pipeline(limit=limit, from_db=from_db)
