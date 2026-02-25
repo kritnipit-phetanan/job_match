@@ -86,7 +86,7 @@ export default function ResumeUpload({ onStateChange, hasResults, isModalOpen, o
         try {
             const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/resume/analyze`, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
-                params: { limit: 5 }
+                params: { limit: 10 }
             });
             setMatchedJobs(response.data.jobs);
             setResumeMarkdown(response.data.resume_markdown);

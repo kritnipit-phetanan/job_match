@@ -14,7 +14,7 @@ router = APIRouter(
 @router.post("/analyze")
 async def analyze_resume(
     file: UploadFile = File(...),
-    limit: int = Query(5, description="จำนวนงานที่ต้องการให้แสดง"),
+    limit: int = Query(10, description="จำนวนงานที่ต้องการให้แสดง"),
     location: str = Query(None, description="กรองตามสถานที่ (เช่น Bangkok)"),
     job_type: str = Query(None, description="กรองตามประเภทงาน (เช่น Full-time)"),
     db_conn = Depends(get_db_connection)  # <-- ยืม Connection DB มาใช้
