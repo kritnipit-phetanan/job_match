@@ -12,6 +12,7 @@ from scraper_db import (
     get_connection, get_pending_jobs, update_description,
     get_browser_config, load_cookies, save_cookies,
     human_like_scroll, human_like_mouse, smart_delay,
+    solve_cloudflare_turnstile,
     HEADLESS,
 )
 
@@ -69,6 +70,7 @@ def run():
             page.goto("https://th.jobsdb.com/", timeout=60000)
             human_like_mouse(page)
             time.sleep(random.uniform(2, 4))
+            solve_cloudflare_turnstile(page)
         except Exception as e:
             print(f"⚠️ Warm-up ช้า: {e}")
 
@@ -79,6 +81,7 @@ def run():
 
             try:
                 page.goto(link, timeout=30000)
+                solve_cloudflare_turnstile(page)
 
                 # ขยับเมาส์ + scroll เหมือนมนุษย์อ่าน JD จริงๆ
                 time.sleep(random.uniform(1, 2))

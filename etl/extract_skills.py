@@ -7,10 +7,11 @@ import time
 from groq import Groq, RateLimitError
 from etl.config import GROQ_API_KEY, GROQ_MODEL
 
-# Rate limiting — Groq free tier มี limit ~30 req/min
-_DELAY_BETWEEN_CALLS = 3    # วินาที ระหว่างแต่ละ call (ปกติ)
+# Rate limiting — Groq free tier: 6000 TPM (tokens per minute)
+# แต่ละ call ใช้ ~600 tokens → ยิงได้ ~10 call/min → delay ≥ 12s ต่อ call
+_DELAY_BETWEEN_CALLS = 12   # วินาที ระหว่างแต่ละ call (เพิ่มจาก 3 เป็น 12 เพื่อไม่ให้ชน TPM limit)
 _MAX_RETRIES = 5            # จำนวนครั้งที่ retry ถ้าเจอ 429
-_RETRY_BASE_DELAY = 10      # วินาที เริ่มต้น (exponential backoff: 10, 20, 40, ...)
+_RETRY_BASE_DELAY = 15      # วินาที เริ่มต้น (exponential backoff: 15, 30, 60, ...)
 
 SYSTEM_PROMPT = """You are a Job Description analyzer. Extract structured information from the given Job Description.
 Return ONLY a valid JSON object with these fields:

@@ -13,6 +13,7 @@ from scraper_db import (
     get_connection, get_existing_links, upsert_job,
     get_browser_config, load_cookies, save_cookies,
     human_like_scroll, human_like_mouse, normalize_link, make_fingerprint,
+    solve_cloudflare_turnstile,
     HEADLESS,
 )
 
@@ -153,6 +154,7 @@ def run():
         try:
             page.goto(home_url, timeout=60000)
             time.sleep(random.uniform(3, 5))
+            solve_cloudflare_turnstile(page)
         except Exception as e:
             print(f"⚠️ เข้าหน้าแรกช้า: {e}")
 
@@ -166,6 +168,7 @@ def run():
         print(f"2️⃣ ไปหน้าค้นหา: {search_url}")
         try:
             page.goto(search_url, timeout=60000)
+            solve_cloudflare_turnstile(page)
         except Exception as e:
             print(f"⚠️ เข้าหน้าค้นหาช้า: {e}")
 

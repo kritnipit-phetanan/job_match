@@ -174,6 +174,74 @@ def save_cookies(context):
 
 
 # ============================================================
+# Cloudflare Turnstile Solver
+# ============================================================
+def solve_cloudflare_turnstile(page, max_attempts: int = 3):
+    """
+    ตรวจจับและพยายามคลิกผ่าน Cloudflare Turnstile ("ยืนยันว่าคุณเป็นมนุษย์")
+    เรียกหลัง page.goto() ทุกครั้ง เพื่อป้องกันไม่ให้ script ไปหา selector ขณะติด Cloudflare
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            # เช็คว่ามี Turnstile iframe ไหม (รอ 5 วินาที)
+            iframe_el = page.wait_for_selector(
+                "iframe[src*='challenges.cloudflare.com']", timeout=5000
+            )
+            if not iframe_el:
+                print("   ✅ ไม่ติด Cloudflare")
+                return True
+
+            print(f"   🛡️ เจอ Cloudflare Turnstile! (attempt {attempt}/{max_attempts})")
+
+            # ขยับเมาส์ไปหา iframe แบบมนุษย์
+            box = iframe_el.bounding_box()
+            if box:
+                # เลื่อนเมาส์ไปที่กล่อง checkbox อย่างช้าๆ
+                target_x = box['x'] + 35  # checkbox อยู่ทางซ้ายของ iframe
+                target_y = box['y'] + box['height'] / 2
+                page.mouse.move(target_x, target_y, steps=random.randint(15, 30))
+                time.sleep(random.uniform(0.5, 1.5))
+
+            # เข้าไปใน iframe เพื่อคลิก checkbox
+            frame = iframe_el.content_frame()
+            if frame:
+                # ลองหา checkbox ด้วยหลาย selector
+                for selector in [
+                    "input[type='checkbox']",
+                    ".ctp-checkbox-label",
+                    "#challenge-stage",
+                    "label",
+                ]:
+                    el = frame.locator(selector)
+                    if el.count() > 0:
+                        el.first.click(force=True)
+                        print(f"   🖱️ คลิก checkbox แล้ว ({selector})")
+                        break
+
+            # รอให้ Cloudflare ตรวจสอบเสร็จ
+            time.sleep(random.uniform(5, 8))
+
+            # เช็คว่าผ่านแล้วหรือยัง (ถ้า iframe หายไป = ผ่าน)
+            remaining = page.locator("iframe[src*='challenges.cloudflare.com']").count()
+            if remaining == 0:
+                print("   ✅ ผ่าน Cloudflare แล้ว!")
+                # รอให้หน้าเว็บจริงโหลด
+                time.sleep(random.uniform(2, 4))
+                return True
+            else:
+                print(f"   ⏳ ยังไม่ผ่าน... (attempt {attempt})")
+
+        except Exception:
+            # ไม่เจอ iframe ใน 5 วินาที = หน้าเว็บปกติ ไม่ติด Cloudflare
+            print("   ✅ ไม่ติด Cloudflare")
+            return True
+
+    print("   ❌ ไม่สามารถผ่าน Cloudflare ได้")
+    page.screenshot(path="cloudflare_blocked.png")
+    return False
+
+
+# ============================================================
 # Anti-Detection Helpers
 # ============================================================
 def human_like_scroll(page):
