@@ -5,4 +5,4 @@ pgvector
 playwright
 playwright-stealth
 groq
-google-generativeai
+google-genai
