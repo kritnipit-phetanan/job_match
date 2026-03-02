@@ -123,3 +123,6 @@ python -m etl.load_to_db
 
 ## Next Steps (TODO)
 - **Expand Job Diversity:** Currently, the dataset primarily focuses on STEM and Data-related roles. Future updates will expand scraping pipelines to cover a wider variety of career fields and industries.
+- **Social Media Alerts:** Automated alerts for matched jobs via Line or Telegram.
+- **Career Path Evolution Roadmap:** AI-generated personalized roadmap showing skills needed to reach target roles.
+- **Full Automation Job Application:** Automated login and application submission for matched jobs.
