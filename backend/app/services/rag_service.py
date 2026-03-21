@@ -50,7 +50,7 @@ def search_matching_jobs(
                 ROUND((1 - (e.embedding <=> %s::vector))::numeric * 100, 2) AS match_score
             FROM jobs j
             JOIN job_embeddings e ON j.id = e.job_id
-            WHERE 1=1
+            WHERE j.is_active = true
         """
         
         vector_str = str(resume_vector)

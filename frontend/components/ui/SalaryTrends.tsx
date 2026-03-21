@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, DollarSign } from "lucide-react";
@@ -29,6 +29,15 @@ function getSalaryColor(index: number, total: number): string {
         SALARY_COLORS.length - 1
     );
     return SALARY_COLORS[colorIndex];
+}
+
+function measureTextWidth(text: string, fontSize: number = 12): number {
+    if (typeof document === "undefined") return text.length * 7;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return text.length * 7;
+    ctx.font = `${fontSize}px Inter, sans-serif`;
+    return ctx.measureText(text).width;
 }
 
 function formatSalary(value: number): string {
@@ -75,6 +84,12 @@ export default function SalaryTrends({ activeChart, setActiveChart }: { activeCh
             })
             .finally(() => setLoading(false));
     }, []);
+
+    const yAxisWidth = useMemo(() => {
+        if (skills.length === 0) return 90;
+        const maxWidth = Math.max(...skills.map(s => measureTextWidth(s.name, 12)));
+        return Math.max(90, Math.ceil(maxWidth + 12));
+    }, [skills]);
 
     if (loading) {
         return (
@@ -135,13 +150,13 @@ export default function SalaryTrends({ activeChart, setActiveChart }: { activeCh
 
                 <div className="w-full flex-1">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={skills} layout="vertical" margin={{ left: -15, right: 10, top: 0, bottom: 0 }}>
+                        <BarChart data={skills} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
                             <XAxis type="number" tickFormatter={formatSalary}
                                 tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
                                 axisLine={false} tickLine={false}
                             />
                             <YAxis
-                                type="category" dataKey="name" width={90}
+                                type="category" dataKey="name" width={yAxisWidth}
                                 tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
                                 interval={0}
                                 axisLine={false} tickLine={false}

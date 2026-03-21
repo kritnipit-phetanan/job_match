@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { UploadCloud, Home as HomeIcon } from "lucide-react";
 
 const ResumeUpload = dynamic(() => import("@/components/ui/ResumeUpload"), {
@@ -125,9 +126,9 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between text-sm text-muted-foreground">
           <span>&copy; 2026 JobMatcher</span>
           <div className="flex gap-6">
-            <span>About</span>
-            <span>Privacy</span>
-            <span>Terms</span>
+            <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           </div>
         </div>
       </footer>

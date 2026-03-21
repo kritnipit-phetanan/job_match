@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from psycopg2.extras import RealDictCursor
+from pydantic import BaseModel
 from app.core.database import get_db_connection
 
 router = APIRouter(
@@ -19,8 +20,8 @@ def get_hot_skills(
     """
     cur = db_conn.cursor(cursor_factory=RealDictCursor)
     try:
-        # นับจำนวนงานทั้งหมด
-        cur.execute("SELECT COUNT(*) AS total FROM jobs WHERE skills IS NOT NULL")
+        # นับจำนวนงานทั้งหมด (เฉพาะงานที่ active)
+        cur.execute("SELECT COUNT(*) AS total FROM jobs WHERE skills IS NOT NULL AND is_active = true")
         total_jobs = cur.fetchone()["total"]
 
         # Unnest JSONB array → นับความถี่ของแต่ละ Skill
@@ -29,6 +30,7 @@ def get_hot_skills(
                 skill,
                 COUNT(*) AS count
             FROM jobs, jsonb_array_elements_text(skills) AS skill
+            WHERE is_active = true
             GROUP BY skill
             ORDER BY count DESC
             LIMIT %s
@@ -69,6 +71,7 @@ def get_salary_trends(
                     CAST(REGEXP_REPLACE(SPLIT_PART(salary, '–', 2), '[^0-9]', '', 'g') AS INTEGER) AS sal_max
                 FROM jobs, jsonb_array_elements_text(skills) AS skill
                 WHERE salary LIKE '%%฿%%' AND salary LIKE '%%–%%'
+                  AND is_active = true
             )
             SELECT
                 skill AS name,
@@ -86,7 +89,7 @@ def get_salary_trends(
         skills = cur.fetchall()
 
         # จำนวนงานที่มี salary ใช้งานได้
-        cur.execute("SELECT COUNT(*) AS total FROM jobs WHERE salary LIKE '%%฿%%' AND salary LIKE '%%–%%'")
+        cur.execute("SELECT COUNT(*) AS total FROM jobs WHERE salary LIKE '%%฿%%' AND salary LIKE '%%–%%' AND is_active = true")
         total_with_salary = cur.fetchone()["total"]
 
         return {
@@ -107,5 +110,47 @@ def get_salary_trends(
     except Exception as e:
         print(f"🔥 Error ใน /salary-trends: {e}")
         return {"status": "error", "total_jobs_with_salary": 0, "skills": []}
+    finally:
+        cur.close()
+
+
+class DeactivateResponse(BaseModel):
+    status: str
+    deactivated_count: int
+    message: str
+
+
+@router.post("/deactivate-stale", response_model=DeactivateResponse)
+def deactivate_stale_jobs(
+    days: int = 30,
+    db_conn=Depends(get_db_connection)
+):
+    """
+    Deactivate งานที่ไม่ได้อัปเดตเกินจำนวนวันที่กำหนด (default: 30 วัน)
+    ไม่ลบข้อมูล แค่ set is_active = false
+    """
+    cur = db_conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE jobs SET is_active = false
+            WHERE updated_at < NOW() - INTERVAL '%s days'
+              AND is_active = true
+        """, [days])
+        deactivated = cur.rowcount
+        db_conn.commit()
+
+        return {
+            "status": "success",
+            "deactivated_count": deactivated,
+            "message": f"Deactivated {deactivated} jobs older than {days} days"
+        }
+    except Exception as e:
+        db_conn.rollback()
+        print(f"🔥 Error ใน /deactivate-stale: {e}")
+        return {
+            "status": "error",
+            "deactivated_count": 0,
+            "message": str(e)
+        }
     finally:
         cur.close()

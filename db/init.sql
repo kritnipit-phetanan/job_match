@@ -20,9 +20,13 @@ CREATE TABLE IF NOT EXISTS jobs (
     skills          JSONB,              -- ["Python", "SQL", "Airflow"]
     experience_years TEXT,               -- "3-5 years"
     job_type        TEXT,                -- "Full-time", "Contract", "Internship"
+    is_active       BOOLEAN DEFAULT true,     -- false = งานเก่าเกิน 30 วัน (ยังเก็บข้อมูลไว้)
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Fast filtering by active status
+CREATE INDEX IF NOT EXISTS idx_jobs_is_active ON jobs(is_active);
 
 -- ============================================================
 -- Job Embeddings table: vector สำหรับ semantic search

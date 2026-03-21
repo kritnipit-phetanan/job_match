@@ -33,3 +33,6 @@ pgdata/
 .DS_Store
 
 local/
+
+# DB migrations (run manually on Supabase)
+db/migrate_*.sql

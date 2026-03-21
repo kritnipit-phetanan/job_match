@@ -120,3 +120,12 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python repair_jobs.py fix
+
+      # ---------------------------------------------------------
+      # 8. Deactivate — ปิดงานที่ไม่ได้อัปเดตเกิน 30 วัน
+      #    ไม่ลบข้อมูล แค่ set is_active = false
+      # ---------------------------------------------------------
+      - name: "Deactivate stale jobs (30+ days)"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python deactivate_stale_jobs.py

@@ -1,0 +1,127 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
+export default function PrivacyPage() {
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Nav */}
+      <nav className="w-full border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-3xl mx-auto flex items-center justify-between px-6 h-14">
+          <Link href="/" className="text-lg font-semibold tracking-tight text-foreground hover:opacity-80 transition-opacity">
+            JobMatcher
+          </Link>
+          <Link href="/" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </Link>
+        </div>
+      </nav>
+
+      {/* Content */}
+      <main className="max-w-3xl mx-auto px-6 py-10 flex-1">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Privacy Policy</h1>
+        <p className="text-sm text-muted-foreground mb-8">Last updated: March 22, 2026</p>
+
+        <div className="space-y-6 text-foreground/90 leading-relaxed">
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Overview</h2>
+            <p>
+              JobMatcher is committed to protecting your privacy. This policy explains what data we collect,
+              how we use it, and your rights regarding your information.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Resume Data — No Storage</h2>
+            <div className="bg-secondary/50 border border-border rounded-lg p-4 my-3">
+              <p className="font-semibold text-foreground mb-1">🔒 We do NOT store your resume.</p>
+              <p className="text-sm text-muted-foreground">
+                Your resume file is processed entirely in memory on our servers. It is converted to text, analyzed by AI,
+                and matched against job listings — all in real time during your session. Once processing is complete,
+                your resume data is immediately discarded and never saved to any database, file system, or storage service.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Data We Collect</h2>
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-semibold text-foreground">Data we process temporarily (not stored):</h3>
+                <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground mt-1">
+                  <li>Your uploaded resume (PDF file)</li>
+                  <li>Extracted text content from your resume</li>
+                  <li>AI-generated vector embeddings of your resume</li>
+                  <li>Match results and skill gap analysis</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Data stored in our database:</h3>
+                <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground mt-1">
+                  <li>Job listing data (title, company, location, salary, description, skills) — sourced from public job boards</li>
+                  <li>Job embedding vectors for semantic matching</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-2">AI Processing</h2>
+            <p>
+              We use Google Gemini API to:
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground mt-2">
+              <li>Generate embedding vectors from your resume text for semantic matching</li>
+              <li>Analyze skill gaps between your resume and job requirements</li>
+              <li>Generate tailored cover letters upon your request</li>
+            </ul>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your resume text is sent to Google&apos;s API for processing. Please refer to{" "}
+              <a href="https://ai.google.dev/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                Google&apos;s AI Terms of Service
+              </a>{" "}
+              for their data handling practices.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Cookies & Analytics</h2>
+            <p>
+              JobMatcher does not use cookies for tracking purposes. We do not use any third-party analytics or advertising services.
+              No personal data is shared with third parties beyond the AI processing described above.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Your Rights</h2>
+            <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground">
+              <li>Since we don&apos;t store your resume, there is no personal data to request deletion of.</li>
+              <li>You can choose not to upload your resume and still access market analytics (Market Demand, Salary Trends).</li>
+              <li>Job listing data is sourced from publicly available job postings.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Contact</h2>
+            <p>
+              If you have any questions about this privacy policy, please reach out via our GitHub repository.
+            </p>
+          </section>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border py-4 mt-auto">
+        <div className="max-w-3xl mx-auto px-6 flex items-center justify-between text-sm text-muted-foreground">
+          <span>&copy; 2026 JobMatcher</span>
+          <div className="flex gap-6">
+            <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors font-medium text-foreground">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
