@@ -25,7 +25,6 @@ export default function TermsPage() {
 
         <div className="space-y-6 text-foreground/90 leading-relaxed">
           <section>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Terms of Service Summary</h2>
             <ul className="list-disc list-inside space-y-3 ml-1 text-muted-foreground">
               <li>
                 <strong className="text-foreground">Usage:</strong> JobMatcher is an AI resume matching tool. You are responsible for the content you upload and agree not to misuse the service.

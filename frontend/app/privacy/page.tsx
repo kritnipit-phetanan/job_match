@@ -61,15 +61,6 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Your Rights</h2>
-            <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground">
-              <li>Since we don&apos;t store your resume, there is no personal data to request deletion of.</li>
-              <li>You can choose not to upload your resume and still access market analytics (Market Demand, Salary Trends).</li>
-              <li>Job listing data is sourced from publicly available job postings.</li>
-            </ul>
-          </section>
-
-          <section>
             <h2 className="text-xl font-semibold text-foreground mb-2">Contact</h2>
             <p>
               If you have any questions about this privacy policy, please reach out via our GitHub repository.
