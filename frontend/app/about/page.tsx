@@ -42,17 +42,6 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Tech Stack</h2>
-            <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground">
-              <li><strong className="text-foreground">Frontend</strong> — Next.js, React, Tailwind CSS, Recharts</li>
-              <li><strong className="text-foreground">Backend</strong> — FastAPI (Python)</li>
-              <li><strong className="text-foreground">Database</strong> — PostgreSQL + pgvector (Supabase)</li>
-              <li><strong className="text-foreground">AI / ML</strong> — Google Gemini (embedding & generation)</li>
-              <li><strong className="text-foreground">Data Pipeline</strong> — Playwright (scraping), custom ETL pipeline</li>
-            </ul>
-          </section>
-
-          <section>
             <h2 className="text-xl font-semibold text-foreground mb-2">Market Analytics</h2>
             <p>
               Beyond resume matching, JobMatcher provides real-time market analytics including the most in-demand skills and salary trends

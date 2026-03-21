@@ -45,43 +45,10 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Data We Collect</h2>
-            <div className="space-y-3">
-              <div>
-                <h3 className="font-semibold text-foreground">Data we process temporarily (not stored):</h3>
-                <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground mt-1">
-                  <li>Your uploaded resume (PDF file)</li>
-                  <li>Extracted text content from your resume</li>
-                  <li>AI-generated vector embeddings of your resume</li>
-                  <li>Match results and skill gap analysis</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Data stored in our database:</h3>
-                <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground mt-1">
-                  <li>Job listing data (title, company, location, salary, description, skills) — sourced from public job boards</li>
-                  <li>Job embedding vectors for semantic matching</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-2">AI Processing</h2>
-            <p>
-              We use Google Gemini API to:
-            </p>
-            <ul className="list-disc list-inside space-y-1 ml-1 text-muted-foreground mt-2">
-              <li>Generate embedding vectors from your resume text for semantic matching</li>
-              <li>Analyze skill gaps between your resume and job requirements</li>
-              <li>Generate tailored cover letters upon your request</li>
-            </ul>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Your resume text is sent to Google&apos;s API for processing. Please refer to{" "}
-              <a href="https://ai.google.dev/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
-                Google&apos;s AI Terms of Service
-              </a>{" "}
-              for their data handling practices.
+            <h2 className="text-xl font-semibold text-foreground mb-2">Data & AI Processing</h2>
+            <p className="text-muted-foreground">
+              We only temporarily process your resume text via Google Gemini API to generate match scores, skill gaps, and cover letters. 
+              No personal data is saved to our database, and we only store publicly obtained job listings.
             </p>
           </section>
 
