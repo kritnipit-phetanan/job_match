@@ -133,7 +133,7 @@ def deactivate_stale_jobs(
     try:
         cur.execute("""
             UPDATE jobs SET is_active = false
-            WHERE updated_at < NOW() - INTERVAL '%s days'
+            WHERE created_at < NOW() - INTERVAL '%s days'
               AND is_active = true
         """, [days])
         deactivated = cur.rowcount

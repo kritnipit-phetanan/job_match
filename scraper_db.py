@@ -60,15 +60,22 @@ def get_existing_links(conn) -> set:
 
 def upsert_job(conn, job_data: dict) -> int | None:
     """
-    Insert job เข้า jobs table (ON CONFLICT DO NOTHING)
+    Insert job เข้า jobs table (ON CONFLICT → reactivate + update)
     ใส่แค่ข้อมูลเบื้องต้น: Title, Company, Location, Salary, Link
-    Returns: job id ถ้า insert สำเร็จ, None ถ้ามีอยู่แล้ว
+    ถ้าเจอลิงก์เดิมที่เคย deactivate → reactivate ให้อัตโนมัติ
+    Returns: job id
     """
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO jobs (title, company, location, salary, link)
         VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (link) DO NOTHING
+        ON CONFLICT (link) DO UPDATE SET
+            title = EXCLUDED.title,
+            company = EXCLUDED.company,
+            location = EXCLUDED.location,
+            salary = EXCLUDED.salary,
+            is_active = true,
+            updated_at = NOW()
         RETURNING id
     """, (
         job_data.get('Title', ''),
@@ -84,10 +91,10 @@ def upsert_job(conn, job_data: dict) -> int | None:
 
 
 def update_description(conn, link: str, jd_text: str):
-    """Update description ของ job ที่มี link ตรงกัน"""
+    """Update description ของ job ที่มี link ตรงกัน (+ reactivate ถ้าเคย deactivate)"""
     cur = conn.cursor()
     cur.execute("""
-        UPDATE jobs SET description = %s, updated_at = NOW()
+        UPDATE jobs SET description = %s, is_active = true, updated_at = NOW()
         WHERE link = %s
     """, (jd_text, link))
     conn.commit()

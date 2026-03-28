@@ -32,7 +32,7 @@ def deactivate_stale(conn, days=30, dry_run=False):
     # ดูจำนวนงานที่จะถูก deactivate
     cur.execute("""
         SELECT COUNT(*) FROM jobs
-        WHERE updated_at < NOW() - INTERVAL '%s days'
+        WHERE created_at < NOW() - INTERVAL '%s days'
           AND is_active = true
     """, [days])
     stale_count = cur.fetchone()[0]
@@ -49,7 +49,7 @@ def deactivate_stale(conn, days=30, dry_run=False):
         cur.execute("""
             SELECT id, title, company, updated_at
             FROM jobs
-            WHERE updated_at < NOW() - INTERVAL '%s days'
+            WHERE created_at < NOW() - INTERVAL '%s days'
               AND is_active = true
             ORDER BY updated_at ASC
             LIMIT 10
@@ -63,7 +63,7 @@ def deactivate_stale(conn, days=30, dry_run=False):
     else:
         cur.execute("""
             UPDATE jobs SET is_active = false
-            WHERE updated_at < NOW() - INTERVAL '%s days'
+            WHERE created_at < NOW() - INTERVAL '%s days'
               AND is_active = true
         """, [days])
         conn.commit()

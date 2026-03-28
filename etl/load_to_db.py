@@ -74,6 +74,7 @@ def update_job_skills(cur, job_id: int, skills_data: dict):
             skills = %s,
             experience_years = %s,
             job_type = %s,
+            is_active = true,
             updated_at = NOW()
         WHERE id = %s
     """, (
@@ -122,6 +123,7 @@ def upsert_job(cur, job: dict) -> int:
             skills = EXCLUDED.skills,
             experience_years = EXCLUDED.experience_years,
             job_type = EXCLUDED.job_type,
+            is_active = true,
             updated_at = NOW()
         RETURNING id
     """, (
