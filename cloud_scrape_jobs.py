@@ -105,12 +105,10 @@ def smart_wait_for_jobs(page, max_retries=30) -> bool:
 # Main Pipeline
 # ============================================================
 def run():
-    keyword = "engineer"
+    keywords = ["ai engineer", "data scientist", "engineer"]
     max_pages = 5
-    formatted_keyword = keyword.replace(" ", "-").lower()
 
     home_url = "https://th.jobsdb.com/"
-    search_url = f'https://th.jobsdb.com/{formatted_keyword}-jobs'
 
     # ---------------------------------------------------------
     # 1. โหลด existing links จาก Supabase (dedup)
@@ -140,7 +138,6 @@ def run():
 
         # โหลด cookies
         load_cookies(context)
-
         page = context.new_page()
 
         # Apply Stealth
@@ -163,98 +160,113 @@ def run():
         save_cookies(context)
 
         # ---------------------------------------------------------
-        # STEP 2: ไปหน้าค้นหา
+        # วนลูปตาม Array ของ Keywords
         # ---------------------------------------------------------
-        print(f"2️⃣ ไปหน้าค้นหา: {search_url}")
-        try:
-            page.goto(search_url, timeout=60000)
-            solve_cloudflare_turnstile(page)
-        except Exception as e:
-            print(f"⚠️ เข้าหน้าค้นหาช้า: {e}")
+        for idx, keyword in enumerate(keywords):
+            formatted_keyword = keyword.replace(" ", "-").lower()
+            search_url = f'https://th.jobsdb.com/{formatted_keyword}-jobs'
+            
+            print(f"\n{'='*40}")
+            print(f"🔍 เริ่มค้นหา Keyword ({idx+1}/{len(keywords)}): {keyword}")
+            print(f"{'='*40}")
 
-        # ---------------------------------------------------------
-        # STEP 3: Smart Wait
-        # ---------------------------------------------------------
-        print("⏳ รอเนื้อหางาน...")
-        if not smart_wait_for_jobs(page):
-            print("❌ หาไม่เจอ — บันทึก screenshot ไว้ debug")
-            page.screenshot(path="cloud_failed.png")
-            browser.close()
-            conn.close()
-            sys.exit(1)
-
-        save_cookies(context)
-
-        # ---------------------------------------------------------
-        # STEP 4: ดึงข้อมูลทีละหน้า → upsert เข้า DB
-        # ---------------------------------------------------------
-        for current_page in range(1, max_pages + 1):
-            target_url = f"{search_url}?page={current_page}"
-            print(f"\n📄 หน้าที่ {current_page}/{max_pages}")
-
+            # ---------------------------------------------------------
+            # STEP 2: ไปหน้าค้นหา
+            # ---------------------------------------------------------
+            print(f"2️⃣ ไปหน้าค้นหา: {search_url}")
             try:
-                page.goto(target_url, timeout=60000)
-                human_like_mouse(page)
-                human_like_scroll(page)
-
-                if not smart_wait_for_jobs(page, max_retries=15):
-                    print(f"⚠️ หน้า {current_page} ไม่เจอ job listing → ข้ามไป")
-                    continue
-
-                job_cards, method = find_job_cards(page)
-                print(f"✅ เจอ {len(job_cards)} งาน ({method})")
-
-                if len(job_cards) == 0:
-                    print("⚠️ ไม่เจองาน → จบ")
-                    break
-
-                # Loop เก็บ + upsert ทีละ card
-                skipped = 0
-                for i, card in enumerate(job_cards):
-                    try:
-                        job_data = extract_job_data(card)
-
-                        # Dedup Layer 1: Link
-                        if job_data['Link'] in existing_links:
-                            skipped += 1
-                            continue
-
-                        # Dedup Layer 2: Fingerprint
-                        fp = make_fingerprint(
-                            job_data.get('Title'), job_data.get('Company'),
-                            job_data.get('Location'), job_data.get('Salary')
-                        )
-                        if fp in existing_fingerprints:
-                            skipped += 1
-                            continue
-
-                        # Upsert เข้า DB ทันที
-                        job_id = upsert_job(conn, job_data)
-                        if job_id:
-                            new_count += 1
-                            print(f"   ✅ [{new_count}] {job_data['Title'][:50]} (id={job_id})")
-
-                        existing_links.add(job_data['Link'])
-                        existing_fingerprints.add(fp)
-
-                    except Exception as e:
-                        print(f"   ⚠️ ข้ามงานที่ {i+1}: {e}")
-                        continue
-
-                skipped_total += skipped
-                if skipped > 0:
-                    print(f"   ⏭️ ข้ามงานซ้ำ {skipped} งาน")
-
-                # พักก่อนไปหน้าถัดไป
-                sleep_time = random.uniform(5, 10)
-                print(f"💤 พัก {sleep_time:.1f}s...")
-                time.sleep(sleep_time)
-
+                page.goto(search_url, timeout=60000)
+                solve_cloudflare_turnstile(page)
             except Exception as e:
-                print(f"❌ Error หน้า {current_page}: {e}")
+                print(f"⚠️ เข้าหน้าค้นหาช้า: {e}")
+
+            # ---------------------------------------------------------
+            # STEP 3: Smart Wait
+            # ---------------------------------------------------------
+            print("⏳ รอเนื้อหางาน...")
+            if not smart_wait_for_jobs(page):
+                print(f"❌ หาไม่เจอสำหรับ {keyword} — บันทึก screenshot ไว้ debug และข้ามไปคำถัดไป")
+                page.screenshot(path=f"cloud_failed_{formatted_keyword}.png")
                 continue
 
-        # บันทึก cookies สุดท้าย
+            save_cookies(context)
+
+            # ---------------------------------------------------------
+            # STEP 4: ดึงข้อมูลทีละหน้า → upsert เข้า DB
+            # ---------------------------------------------------------
+            for current_page in range(1, max_pages + 1):
+                target_url = f"{search_url}?page={current_page}"
+                print(f"\n📄 หน้าที่ {current_page}/{max_pages} ({keyword})")
+
+                try:
+                    page.goto(target_url, timeout=60000)
+                    human_like_mouse(page)
+                    human_like_scroll(page)
+
+                    if not smart_wait_for_jobs(page, max_retries=15):
+                        print(f"⚠️ หน้า {current_page} ไม่เจอ job listing → ข้ามไป")
+                        continue
+
+                    job_cards, method = find_job_cards(page)
+                    print(f"✅ เจอ {len(job_cards)} งาน ({method})")
+
+                    if len(job_cards) == 0:
+                        print("⚠️ ไม่เจองาน → จบ")
+                        break
+
+                    # Loop เก็บ + upsert ทีละ card
+                    skipped = 0
+                    for i, card in enumerate(job_cards):
+                        try:
+                            job_data = extract_job_data(card)
+
+                            # Dedup Layer 1: Link
+                            if job_data['Link'] in existing_links:
+                                skipped += 1
+                                continue
+
+                            # Dedup Layer 2: Fingerprint
+                            fp = make_fingerprint(
+                                job_data.get('Title'), job_data.get('Company'),
+                                job_data.get('Location'), job_data.get('Salary')
+                            )
+                            if fp in existing_fingerprints:
+                                skipped += 1
+                                continue
+
+                            # Upsert เข้า DB ทันที
+                            job_id = upsert_job(conn, job_data)
+                            if job_id:
+                                new_count += 1
+                                print(f"   ✅ [{new_count}] {job_data['Title'][:50]} (id={job_id})")
+
+                            existing_links.add(job_data['Link'])
+                            existing_fingerprints.add(fp)
+
+                        except Exception as e:
+                            print(f"   ⚠️ ข้ามงานที่ {i+1}: {e}")
+                            continue
+
+                    skipped_total += skipped
+                    if skipped > 0:
+                        print(f"   ⏭️ ข้ามงานซ้ำ {skipped} งาน")
+
+                    # พักก่อนไปหน้าถัดไป
+                    sleep_time = random.uniform(5, 10)
+                    print(f"💤 พัก {sleep_time:.1f}s...")
+                    time.sleep(sleep_time)
+
+                except Exception as e:
+                    print(f"❌ Error หน้า {current_page}: {e}")
+                    continue
+
+            # พักใหญ่ก่อนเปลี่ยน Keyword
+            if idx < len(keywords) - 1:
+                pause_time = random.uniform(15, 25)
+                print(f"\n☕ พักจอ {pause_time:.1f} วินาที ก่อนเปลี่ยน Keyword ป้องกันบล็อก...")
+                time.sleep(pause_time)
+
+        # บันทึก cookies สุดท้ายหลังจากลูปจบหมด
         save_cookies(context)
         browser.close()
 
