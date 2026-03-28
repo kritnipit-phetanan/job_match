@@ -9,7 +9,7 @@ services:
     plan: free
     region: singapore
     branch: main
-    autoDeployTrigger: 'off' # Disable automatic deploys
+    autoDeployTrigger: 'on'
     healthCheckPath: /
     envVars:
       - key: DATABASE_URL
