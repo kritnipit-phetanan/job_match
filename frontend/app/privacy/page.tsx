@@ -63,7 +63,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-foreground mb-2">Contact</h2>
             <p>
-              If you have any questions about this privacy policy, please reach out via our GitHub repository.
+              If you have any questions about this privacy policy, please reach out via our{" "}
+              <a href="https://github.com/kritnipit-phetanan/job_match" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">GitHub repository</a>.
             </p>
           </section>
         </div>
