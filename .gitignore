@@ -16,6 +16,7 @@ venv/
 *.csv
 *.png
 failed_page.html
+Resume_Test.pdf
 
 # Unused scripts
 reset_db.py
