@@ -50,7 +50,7 @@ def search_matching_jobs(
                 ROUND((1 - (e.embedding <=> %s::vector))::numeric * 100, 2) AS match_score
             FROM jobs j
             JOIN job_embeddings e ON j.id = e.job_id
-            WHERE j.is_active = true
+            WHERE e.is_active = true
         """
         
         vector_str = str(resume_vector)
@@ -63,7 +63,7 @@ def search_matching_jobs(
             base_query += " AND j.job_type ILIKE %s"
             params.append(f"%{job_type_filter}%")
 
-        base_query += " ORDER BY (e.embedding <=> %s::vector) + 0 LIMIT %s"
+        base_query += " ORDER BY e.embedding <=> %s::vector LIMIT %s"
         params.extend([vector_str, pool_size])
 
         cur.execute(base_query, params)

@@ -145,11 +145,12 @@ def upsert_embedding(cur, job_id: int, embedding: list, model: str = 'gemini-emb
     if embedding is None:
         return
     cur.execute("""
-        INSERT INTO job_embeddings (job_id, embedding, model)
-        VALUES (%s, %s, %s)
+        INSERT INTO job_embeddings (job_id, embedding, model, is_active)
+        VALUES (%s, %s, %s, true)
         ON CONFLICT (job_id) DO UPDATE SET
             embedding = EXCLUDED.embedding,
             model = EXCLUDED.model,
+            is_active = true,
             created_at = NOW()
     """, (job_id, str(embedding), model))
 
