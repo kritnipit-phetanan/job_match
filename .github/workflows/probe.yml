@@ -9,7 +9,11 @@ on:
 
 jobs:
   probe:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
 
     steps:
@@ -24,8 +28,13 @@ jobs:
       - name: Install probe dependencies
         run: pip install requests curl_cffi playwright
 
-      - name: Install real Chrome for Playwright
+      - name: Install real Chrome for Playwright (Linux)
+        if: runner.os == 'Linux'
         run: playwright install chrome --with-deps
+
+      - name: Install real Chrome for Playwright (macOS)
+        if: runner.os == 'macOS'
+        run: playwright install chrome
 
       - name: Run probe
         run: python probe_jobsdb_access.py
