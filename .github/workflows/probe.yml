@@ -1,0 +1,31 @@
+# ============================================================
+# Probe — ทดสอบว่าเข้าถึง JobsDB จาก IP ของ GitHub Actions ได้ด้วยวิธีไหน
+# รันเองเท่านั้น (workflow_dispatch) — ไม่แตะ database, ไม่ใช้ secret
+# ============================================================
+name: Probe JobsDB access
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install probe dependencies
+        run: pip install requests curl_cffi playwright
+
+      - name: Install real Chrome for Playwright
+        run: playwright install chrome --with-deps
+
+      - name: Run probe
+        run: python probe_jobsdb_access.py
