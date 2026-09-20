@@ -190,9 +190,10 @@ def solve_cloudflare_turnstile(page, max_attempts: int = 3):
     """
     for attempt in range(1, max_attempts + 1):
         try:
-            # เช็คว่ามี Turnstile iframe ไหม (รอ 5 วินาที)
+            # เช็คว่ามี Turnstile iframe ไหม (รอ 15 วินาที — เผื่อ challenge โหลดช้า
+            # โดยเฉพาะจาก IP ของ CI ที่ Cloudflare อาจ delay การ inject iframe นานกว่าปกติ)
             iframe_el = page.wait_for_selector(
-                "iframe[src*='challenges.cloudflare.com']", timeout=5000
+                "iframe[src*='challenges.cloudflare.com']", timeout=15000
             )
             if not iframe_el:
                 print("   ✅ ไม่ติด Cloudflare")

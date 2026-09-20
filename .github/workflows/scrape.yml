@@ -75,7 +75,8 @@ jobs:
                 echo "⏳ Waiting 60s before retry..."
                 sleep 60
               else
-                echo "⚠️ Phase 1 failed after 2 attempts — continuing to Phase 2 & ETL"
+                echo "🔥 Phase 1 failed after 2 attempts — failing this step"
+                exit 1
               fi
             fi
           done

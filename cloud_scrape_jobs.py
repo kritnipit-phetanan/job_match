@@ -18,6 +18,10 @@ from scraper_db import (
 )
 
 
+class CloudflareBlockedError(Exception):
+    """โดน Cloudflare บล็อกจนหา job card ไม่เจอเลยสักงาน ตลอดทั้ง run"""
+
+
 # ============================================================
 # Job Card Helpers
 # ============================================================
@@ -121,6 +125,7 @@ def run():
 
     new_count = 0
     skipped_total = 0
+    total_cards_seen = 0
 
     # ---------------------------------------------------------
     # 2. เปิด Browser
@@ -209,6 +214,7 @@ def run():
 
                     job_cards, method = find_job_cards(page)
                     print(f"✅ เจอ {len(job_cards)} งาน ({method})")
+                    total_cards_seen += len(job_cards)
 
                     if len(job_cards) == 0:
                         print("⚠️ ไม่เจองาน → จบ")
@@ -282,6 +288,18 @@ def run():
     print(f"   📊 งานรวมใน DB: {len(existing_links)}")
     print(f"{'='*50}")
 
+    # ถ้าไม่เจอ job card เลยสักใบตลอดทั้ง run (ทุก keyword ทุกหน้า)
+    # แปลว่าไม่ใช่แค่ "ไม่มีงานใหม่" แต่คือ scraper เข้าไม่ถึงเนื้อหาจริงๆ
+    # (เช่น โดน Cloudflare บล็อก หรือ selector ไม่ตรงกับหน้าเว็บแล้ว) → ต้อง fail ดังๆ
+    if total_cards_seen == 0:
+        raise CloudflareBlockedError(
+            "ไม่เจอ job card เลยสักใบตลอด run — อาจโดน Cloudflare บล็อกหรือ selector ไม่ตรงกับหน้าเว็บ"
+        )
+
 
 if __name__ == '__main__':
-    run()
+    try:
+        run()
+    except CloudflareBlockedError as e:
+        print(f"\n❌ {e}")
+        sys.exit(1)
