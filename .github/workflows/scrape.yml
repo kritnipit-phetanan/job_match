@@ -16,7 +16,12 @@ on:
 jobs:
   scrape-and-etl:
     runs-on: self-hosted
-    timeout-minutes: 90
+    timeout-minutes: 300
+    env:
+      # ให้ print() ของทุก step เขียนออกทันที ไม่สะสมใน buffer จนกว่าจะจบ
+      # (self-hosted ไม่มี TTY ต่ออยู่ Python เลย block-buffer stdout โดย
+      # ปริยาย ทำให้ log บน GitHub โชว์ค้าง ทั้งที่งานเดินอยู่จริง)
+      PYTHONUNBUFFERED: "1"
 
     steps:
       # ---------------------------------------------------------
