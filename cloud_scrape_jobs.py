@@ -109,7 +109,15 @@ def smart_wait_for_jobs(page, max_retries=30) -> bool:
 # Main Pipeline
 # ============================================================
 def run():
-    keywords = ["ai engineer", "data scientist", "engineer"]
+    # (label, search_url) — คำค้นหา 3 ตัวเดิม + 2 หมวดใหม่ (Engineering, ICT)
+    # ทุกตัวเป็นแบบทั้งประเทศ ไม่จำกัดพื้นที่ ใช้ URL format ปัจจุบันของ JobsDB (/th/...)
+    search_targets = [
+        ("ai engineer", "https://th.jobsdb.com/th/ai-engineer-jobs"),
+        ("data scientist", "https://th.jobsdb.com/th/data-scientist-jobs"),
+        ("engineer", "https://th.jobsdb.com/th/engineer-jobs"),
+        ("engineering", "https://th.jobsdb.com/th/jobs-in-engineering"),
+        ("information & communication technology", "https://th.jobsdb.com/th/jobs-in-information-communication-technology"),
+    ]
     max_pages = 5
 
     home_url = "https://th.jobsdb.com/"
@@ -165,14 +173,13 @@ def run():
         save_cookies(context)
 
         # ---------------------------------------------------------
-        # วนลูปตาม Array ของ Keywords
+        # วนลูปตาม search_targets (keyword search + classification browse)
         # ---------------------------------------------------------
-        for idx, keyword in enumerate(keywords):
-            formatted_keyword = keyword.replace(" ", "-").lower()
-            search_url = f'https://th.jobsdb.com/{formatted_keyword}-jobs'
-            
+        for idx, (label, search_url) in enumerate(search_targets):
+            safe_label = label.replace(" ", "-").replace("&", "and").lower()
+
             print(f"\n{'='*40}")
-            print(f"🔍 เริ่มค้นหา Keyword ({idx+1}/{len(keywords)}): {keyword}")
+            print(f"🔍 เริ่มค้นหา ({idx+1}/{len(search_targets)}): {label}")
             print(f"{'='*40}")
 
             # ---------------------------------------------------------
@@ -190,8 +197,8 @@ def run():
             # ---------------------------------------------------------
             print("⏳ รอเนื้อหางาน...")
             if not smart_wait_for_jobs(page):
-                print(f"❌ หาไม่เจอสำหรับ {keyword} — บันทึก screenshot ไว้ debug และข้ามไปคำถัดไป")
-                page.screenshot(path=f"cloud_failed_{formatted_keyword}.png")
+                print(f"❌ หาไม่เจอสำหรับ {label} — บันทึก screenshot ไว้ debug และข้ามไปคำถัดไป")
+                page.screenshot(path=f"cloud_failed_{safe_label}.png")
                 continue
 
             save_cookies(context)
@@ -201,7 +208,7 @@ def run():
             # ---------------------------------------------------------
             for current_page in range(1, max_pages + 1):
                 target_url = f"{search_url}?page={current_page}"
-                print(f"\n📄 หน้าที่ {current_page}/{max_pages} ({keyword})")
+                print(f"\n📄 หน้าที่ {current_page}/{max_pages} ({label})")
 
                 try:
                     page.goto(target_url, timeout=60000)
@@ -266,10 +273,10 @@ def run():
                     print(f"❌ Error หน้า {current_page}: {e}")
                     continue
 
-            # พักใหญ่ก่อนเปลี่ยน Keyword
-            if idx < len(keywords) - 1:
+            # พักใหญ่ก่อนเปลี่ยนคำค้นหา/หมวด
+            if idx < len(search_targets) - 1:
                 pause_time = random.uniform(15, 25)
-                print(f"\n☕ พักจอ {pause_time:.1f} วินาที ก่อนเปลี่ยน Keyword ป้องกันบล็อก...")
+                print(f"\n☕ พักจอ {pause_time:.1f} วินาที ก่อนเปลี่ยนคำค้นหา ป้องกันบล็อก...")
                 time.sleep(pause_time)
 
         # บันทึก cookies สุดท้ายหลังจากลูปจบหมด
