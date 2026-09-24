@@ -188,19 +188,26 @@ def solve_cloudflare_turnstile(page, max_attempts: int = 3):
     ตรวจจับและพยายามคลิกผ่าน Cloudflare Turnstile ("ยืนยันว่าคุณเป็นมนุษย์")
     เรียกหลัง page.goto() ทุกครั้ง เพื่อป้องกันไม่ให้ script ไปหา selector ขณะติด Cloudflare
     """
+    cf_iframe = "iframe[src*='challenges.cloudflare.com']"
+    # โลโก้ JobsDB มีทุกหน้าจริงของเว็บ แต่ไม่มีในหน้า challenge ของ Cloudflare
+    real_page = '[data-automation="jobsdb"]'
+
     for attempt in range(1, max_attempts + 1):
         try:
-            # เช็คว่ามี Turnstile iframe ไหม (รอ 15 วินาที — เผื่อ challenge โหลดช้า
-            # โดยเฉพาะจาก IP ของ CI ที่ Cloudflare อาจ delay การ inject iframe นานกว่าปกติ)
-            iframe_el = page.wait_for_selector(
-                "iframe[src*='challenges.cloudflare.com']", timeout=15000
-            )
-            if not iframe_el:
-                print("   ✅ ไม่ติด Cloudflare")
-                return True
+            # รอ "iframe challenge หรือหน้าจริง" อย่างใดอย่างหนึ่ง แล้วจบทันที
+            # (เดิมรอ iframe อย่างเดียว หน้าปกติเลยเสีย 15 วิเต็มทุกครั้ง)
+            page.wait_for_selector(f"{cf_iframe}, {real_page}", timeout=15000)
+        except Exception:
+            print("   ⚠️ ไม่เจอทั้งหน้า JobsDB และ Cloudflare iframe ใน 15 วิ")
+            page.screenshot(path="cloudflare_blocked.png")
+            return False
 
-            print(f"   🛡️ เจอ Cloudflare Turnstile! (attempt {attempt}/{max_attempts})")
+        iframe_el = page.query_selector(cf_iframe)
+        if not iframe_el:
+            return True
 
+        print(f"   🛡️ เจอ Cloudflare Turnstile! (attempt {attempt}/{max_attempts})")
+        try:
             # ขยับเมาส์ไปหา iframe แบบมนุษย์
             box = iframe_el.bounding_box()
             if box:
@@ -225,24 +232,19 @@ def solve_cloudflare_turnstile(page, max_attempts: int = 3):
                         el.first.click(force=True)
                         print(f"   🖱️ คลิก checkbox แล้ว ({selector})")
                         break
+        except Exception as e:
+            print(f"   ⚠️ คลิก checkbox ไม่สำเร็จ: {e}")
 
-            # รอให้ Cloudflare ตรวจสอบเสร็จ
-            time.sleep(random.uniform(5, 8))
+        # รอให้ Cloudflare ตรวจสอบเสร็จ
+        time.sleep(random.uniform(5, 8))
 
-            # เช็คว่าผ่านแล้วหรือยัง (ถ้า iframe หายไป = ผ่าน)
-            remaining = page.locator("iframe[src*='challenges.cloudflare.com']").count()
-            if remaining == 0:
-                print("   ✅ ผ่าน Cloudflare แล้ว!")
-                # รอให้หน้าเว็บจริงโหลด
-                time.sleep(random.uniform(2, 4))
-                return True
-            else:
-                print(f"   ⏳ ยังไม่ผ่าน... (attempt {attempt})")
-
-        except Exception:
-            # ไม่เจอ iframe ใน 5 วินาที = หน้าเว็บปกติ ไม่ติด Cloudflare
-            print("   ✅ ไม่ติด Cloudflare")
+        # เช็คว่าผ่านแล้วหรือยัง (ถ้า iframe หายไป = ผ่าน)
+        if page.locator(cf_iframe).count() == 0:
+            print("   ✅ ผ่าน Cloudflare แล้ว!")
+            # รอให้หน้าเว็บจริงโหลด
+            time.sleep(random.uniform(2, 4))
             return True
+        print(f"   ⏳ ยังไม่ผ่าน... (attempt {attempt})")
 
     print("   ❌ ไม่สามารถผ่าน Cloudflare ได้")
     page.screenshot(path="cloudflare_blocked.png")
