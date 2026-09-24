@@ -95,3 +95,4 @@ This project is divided into four main phases, following the standard Data Engin
 - [ ] **Career Path Evolution Roadmap 🗺️:** A visual progression tree showing the stepping stones from the user's current role to their dream role, predicting the next skills to acquire.
 - [x] **Market Demand Heatmap 📊:** Real-time analytics highlighting trending "Hot Skills" across all scraped jobs to help users prioritize their learning focus.
 - [ ] **Tailored Portfolio Generator 💼:** Automatically generate a structured portfolio or GitHub README template that highlights the exact projects/skills a specific role demands.
+- [ ] **Jobs Auto Application 🤖:** Automatically apply for jobs that match the user's profile.

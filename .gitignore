@@ -35,5 +35,13 @@ pgdata/
 
 local/
 
+# Graphify (local machine-specific hook config + generated graph)
+.claude/
+.codex/
+.gitattributes
+graphify-out/
+AGENTS.md
+CLAUDE.md
+
 # DB migrations (run manually on Supabase)
 db/migrate_*.sql
