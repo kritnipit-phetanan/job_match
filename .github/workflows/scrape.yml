@@ -5,8 +5,7 @@
 name: Nightly Scrape & ETL
 
 on:
-  # รันอัตโนมัติทุกวันเริ่มต้นที่ 01:45 UTC (08:45 เวลาไทย)
-  # (จากนั้นจะมีการใช้ sleep เพื่อสุ่มดีเลย์ไปถึง 14:30)
+  # ตั้งไว้ 01:45 UTC แต่ GitHub มักยิงช้าราว 5 ชม. (~13:40 เวลาไทย)
   schedule:
     - cron: '45 1 * * *'
 
@@ -14,7 +13,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  scrape-and-etl:
+  # Phase 1-2 ต้องรันบน Mac (IP บ้าน) เพราะ Cloudflare ของ JobsDB บล็อก IP ของ GitHub
+  scrape:
     runs-on: self-hosted
     timeout-minutes: 300
     env:
@@ -96,6 +96,30 @@ jobs:
           HEADLESS: "true"
         run: python3 cloud_scrape_details.py
 
+  # ETL / Repair / Deactivate คุยแค่กับ Groq, Gemini, Supabase ไม่แตะ JobsDB
+  # จึงรันบนเครื่องของ GitHub ได้ ไม่ต้องให้ Mac เปิดค้างอีก ~3 ชม.
+  etl:
+    needs: scrape
+    # ทำ ETL งานที่ค้างต่อ แม้ scrape รอบนี้จะพัง (เช่น Mac หลับจนงานถูก Abandoned)
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
       # ---------------------------------------------------------
       # 6. ETL — Extract skills + Embed → upsert เข้า DB
       # ---------------------------------------------------------
@@ -104,7 +128,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: python3 -m etl.load_to_db
+        run: python3 -m etl.load_to_db --from-db
 
       # ---------------------------------------------------------
       # 7. Repair — รีเซ็ตงานที่มีปัญหา (skills=[], JD='Not Found')
@@ -118,8 +142,11 @@ jobs:
       # ---------------------------------------------------------
       # 8. Deactivate — ปิดงานที่ไม่ได้อัปเดตเกิน 30 วัน
       #    ไม่ลบข้อมูล แค่ set is_active = false
+      #    รันเฉพาะเมื่อ scrape รอบนี้สำเร็จ — ถ้า scrape พังแล้วยัง deactivate
+      #    ต่อ จะปิดงานทั้งตารางเงียบ ๆ แบบ incident ส.ค. 2569
       # ---------------------------------------------------------
       - name: "Deactivate stale jobs (30+ days)"
+        if: ${{ success() && needs.scrape.result == 'success' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python3 deactivate_stale_jobs.py
