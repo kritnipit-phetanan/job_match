@@ -111,14 +111,14 @@ def smart_wait_for_jobs(page, max_retries=30) -> bool:
 def run():
     # (label, search_url, max_pages) — ทั้งประเทศ เรียงใหม่สุดก่อน (sortmode=ListedDate)
     # ค่าเริ่มต้นของ JobsDB เรียงตาม "ตรงที่สุด" ซึ่งหน้าแรก ๆ เป็นงานเดิมเกือบทุกวัน
-    # หมวดกว้าง (Engineering/ICT) เอาแค่ 2 หน้า (~20 ชม. ล่าสุด) เพื่อลดโหลดที่ทำให้โดน
+    # หมวดกว้าง (Engineering/ICT) เอา 3 หน้า (~1 วันล่าสุด) เพื่อลดโหลดที่ทำให้โดน
     # Cloudflare rate limit; ตัดคำค้น "engineer" ออกเพราะซ้ำกับหมวด Engineering เกือบทั้งหมด
     search_targets = [
         ("ai engineer", "https://th.jobsdb.com/th/ai-engineer-jobs?sortmode=ListedDate", 5),
         ("data scientist", "https://th.jobsdb.com/th/data-scientist-jobs?sortmode=ListedDate", 5),
-        ("engineering", "https://th.jobsdb.com/th/jobs-in-engineering?sortmode=ListedDate", 2),
+        ("engineering", "https://th.jobsdb.com/th/jobs-in-engineering?sortmode=ListedDate", 3),
         ("information & communication technology",
-         "https://th.jobsdb.com/th/jobs-in-information-communication-technology?sortmode=ListedDate", 2),
+         "https://th.jobsdb.com/th/jobs-in-information-communication-technology?sortmode=ListedDate", 3),
     ]
 
     home_url = "https://th.jobsdb.com/"
