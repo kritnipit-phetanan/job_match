@@ -14,7 +14,7 @@ import os
 
 # Import config และ modules ที่เราเขียนไว้
 from etl.config import get_database_url, CSV_FULL_DATA
-from etl.extract_skills import extract_skills
+from etl.extract_skills import extract_skills, SkillExtractionUnavailable, DailyLimitReached
 from etl.embed_jobs import embed_text
 
 
@@ -159,7 +159,7 @@ def run_pipeline(csv_path: str = None, limit: int = None, from_db: bool = False)
     """
     ETL Pipeline หลัก (Updated for Semantic Embedding):
     1. อ่านข้อมูล (CSV หรือ DB)
-    2. Extract skills (Groq — llama-3.1-8b-instant)
+    2. Extract skills (Groq — GROQ_MODEL)
     3. Construct Rich Text (Title + Skills + Summary)
     4. Embed Rich Text (Gemini Embedding)
     5. Upsert เข้า PostgreSQL
@@ -366,6 +366,7 @@ def run_pipeline_from_db(limit: int = None):
     cur = conn.cursor()
     success = 0
     errors = 0
+    stopped_by = None
 
     for idx, row in df.iterrows():
         title = row['title']
@@ -374,10 +375,16 @@ def run_pipeline_from_db(limit: int = None):
 
         print(f"[{idx+1}/{len(df)}] {title[:50]}...")
 
+        # ถ้า Groq ใช้ไม่ได้ ต้องหยุดทั้งรอบ ห้ามบันทึก skills ว่าง + embedding
+        # เพราะงานที่มี embedding แล้วจะไม่ถูก ETL หยิบกลับมาทำใหม่อีก
         try:
-            # STEP 1: Extract Skills
             skills_data = extract_skills(jd)
+        except SkillExtractionUnavailable as e:
+            stopped_by = e
+            print(f"   🛑 หยุด ETL: {e}")
+            break
 
+        try:
             if skills_data['required_skills']:
                 print(f"   🧠 Skills: {skills_data['required_skills'][:5]}...")
             else:
@@ -417,7 +424,14 @@ def run_pipeline_from_db(limit: int = None):
     print(f"🎉 ETL Pipeline (Cloud Mode) เสร็จสิ้น!")
     print(f"   ✅ Processed & Saved: {success}")
     print(f"   ❌ Errors: {errors}")
+    if stopped_by:
+        print(f"   ⏸️ ค้างไว้ให้รอบถัดไป: {len(df) - success - errors} งาน")
     print(f"{'='*50}")
+
+    # โควตารายวันหมดเป็นเรื่องปกติช่วงงานค้างเยอะ → จบแบบสำเร็จ ให้ step ถัดไปรันต่อ
+    # แต่ถ้า model ถูกถอด / key ผิด ต้องให้ workflow fail ให้เห็น
+    if stopped_by and not isinstance(stopped_by, DailyLimitReached):
+        sys.exit(1)
 
 
 if __name__ == '__main__':

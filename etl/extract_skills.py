@@ -1,5 +1,5 @@
 """
-Extract Skills — ใช้ Groq API (llama-3.1-8b-instant) แยก skills จาก Job Description
+Extract Skills — ใช้ Groq API (GROQ_MODEL ใน etl/config.py) แยก skills จาก Job Description
 """
 import json
 import re
@@ -7,11 +7,28 @@ import time
 from groq import Groq, RateLimitError
 from etl.config import GROQ_API_KEY, GROQ_MODEL
 
-# Rate limiting — Groq free tier: 6000 TPM (tokens per minute)
-# แต่ละ call ใช้ ~600 tokens → ยิงได้ ~10 call/min → delay ≥ 12s ต่อ call
-_DELAY_BETWEEN_CALLS = 12   # วินาที ระหว่างแต่ละ call (เพิ่มจาก 3 เป็น 12 เพื่อไม่ให้ชน TPM limit)
+# Rate limiting — Groq free tier (qwen/qwen3.8-27b): 1000 req/วัน, 8000 TPM,
+# และ output 1000 tokens/min (OTPM) ซึ่งตึงสุด — output ~200 tokens/call → ~5 call/min
+_DELAY_BETWEEN_CALLS = 12   # วินาที ระหว่างแต่ละ call
 _MAX_RETRIES = 5            # จำนวนครั้งที่ retry ถ้าเจอ 429
 _RETRY_BASE_DELAY = 15      # วินาที เริ่มต้น (exponential backoff: 15, 30, 60, ...)
+
+
+class SkillExtractionUnavailable(Exception):
+    """Groq ใช้งานไม่ได้ (model ถูกถอด / key ผิด / retry หมด) — ห้ามบันทึก skills ว่างแทน"""
+
+
+class DailyLimitReached(SkillExtractionUnavailable):
+    """โควตา requests/วัน ของ Groq หมด — หยุดแล้วให้รอบถัดไปทำต่อ"""
+
+
+def _retry_after_seconds(msg: str):
+    """ดึงเวลารอจาก 'Please try again in 1m26.4s' หรือ '3.48s'"""
+    m = re.search(r'try again in (?:(\d+)h)?(?:(\d+)m)?(\d+(?:\.\d+)?)s', msg)
+    if not m:
+        return None
+    h, mnt, s = m.groups()
+    return int(h or 0) * 3600 + int(mnt or 0) * 60 + float(s)
 
 SYSTEM_PROMPT = """You are a Job Description analyzer. Extract structured information from the given Job Description.
 Return ONLY a valid JSON object with these fields:
@@ -37,7 +54,7 @@ Rules:
 
 def extract_skills(jd_text: str, model: str = None) -> dict:
     """
-    ส่ง JD text ไปให้ Groq (llama-3.1-8b-instant) แยก skills ออกมาเป็น JSON
+    ส่ง JD text ไปให้ Groq แยก skills ออกมาเป็น JSON
     พร้อม retry + exponential backoff สำหรับ 429 Rate Limit
     """
     if not jd_text or jd_text.strip() in ("", "Not Found", "Error", "No Link"):
@@ -76,38 +93,32 @@ def extract_skills(jd_text: str, model: str = None) -> dict:
             return parsed
 
         except RateLimitError as e:
-            # Parse เวลาจาก error message โดยตรง เช่น "Please try again in 4.43s"
-            wait_time = None
             error_msg = str(e)
-            match = re.search(r'try again in (\d+\.?\d*)s', error_msg)
-            if match:
-                wait_time = float(match.group(1)) + 1  # +1s buffer เผื่อ
+            if "per day" in error_msg:
+                raise DailyLimitReached(error_msg) from e
 
-            if not wait_time:
-                wait_time = _RETRY_BASE_DELAY * (2 ** attempt)  # fallback: 10, 20, 40...
+            # Parse เวลาจาก error message โดยตรง เช่น "Please try again in 4.43s"
+            wait_time = _retry_after_seconds(error_msg)
+            wait_time = wait_time + 1 if wait_time else _RETRY_BASE_DELAY * (2 ** attempt)
 
             print(f"   ⏳ Rate limited (429). รอ {wait_time:.1f}s แล้ว retry ({attempt+1}/{_MAX_RETRIES})...")
             time.sleep(wait_time)
             continue
 
         except Exception as e:
-            # Error อื่นๆ ไม่ต้อง retry
-            print(f"   ⚠️ Groq API error: {e}")
-            break
+            # เช่น model ถูกถอด (404), key ผิด (401) — retry ไปก็ไม่หาย
+            raise SkillExtractionUnavailable(f"Groq API error ({model}): {e}") from e
 
-    # retry หมดแล้วยังไม่ได้ → return default
-    print(f"   ❌ Groq API failed after {_MAX_RETRIES} retries")
-    return {
-        "required_skills": [],
-        "experience_years": "Not specified",
-        "job_type": "Not specified",
-    }
+    raise SkillExtractionUnavailable(f"Groq API ยังโดน rate limit หลัง retry {_MAX_RETRIES} ครั้ง")
 
 
 def _flatten_skills(skills) -> list[str]:
     """Flatten nested list เป็น flat list of strings"""
     if not skills:
         return []
+    # บาง model ตอบเป็น string เช่น "Not specified" — ถ้าวน list ตรง ๆ จะแตกเป็นตัวอักษร
+    if isinstance(skills, str):
+        return [] if skills.strip().lower() in ("not specified", "none", "n/a") else [skills]
     flat = []
     for item in skills:
         if isinstance(item, list):
