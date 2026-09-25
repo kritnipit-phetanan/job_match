@@ -12,12 +12,15 @@ from scraper_db import (
     get_connection, get_pending_jobs, update_description,
     get_browser_config, load_cookies, save_cookies,
     human_like_scroll, human_like_mouse, smart_delay,
-    solve_cloudflare_turnstile,
+    solve_cloudflare_turnstile, gh_warning, gh_output,
     HEADLESS,
 )
 
 # Flag สำหรับลิงก์เสีย → ข้ามเมื่อรันใหม่
 BROKEN_LINK_FLAG = "Not Found"
+
+# โดน challenge ติดกันเท่านี้ = น่าจะโดนบล็อกทั้ง IP → หยุด ไม่ยิงต่อให้แย่ลง
+_MAX_CONSECUTIVE_BLOCKED = 3
 
 
 # ============================================================
@@ -45,6 +48,9 @@ def run():
     success_count = 0
     flagged_count = 0
     error_count = 0
+    blocked_count = 0
+    consecutive_blocked = 0
+    stopped_early = False
 
     with sync_playwright() as p:
         print(f"🚀 เริ่มต้นระบบ... (headless={HEADLESS})")
@@ -81,7 +87,18 @@ def run():
 
             try:
                 page.goto(link, timeout=30000)
-                solve_cloudflare_turnstile(page)
+                if not solve_cloudflare_turnstile(page):
+                    # ห้าม flag 'Not Found' — หน้างานยังอยู่ แค่เราโดนกั้น
+                    # ปล่อย description ว่างไว้ รอบหน้าจะลองใหม่เอง
+                    blocked_count += 1
+                    consecutive_blocked += 1
+                    print(f"   🛡️ โดน Cloudflare challenge → ข้าม ({consecutive_blocked}/{_MAX_CONSECUTIVE_BLOCKED} ติดกัน)")
+                    if consecutive_blocked >= _MAX_CONSECUTIVE_BLOCKED:
+                        stopped_early = True
+                        break
+                    smart_delay(index, len(pending_jobs))
+                    continue
+                consecutive_blocked = 0
 
                 # ขยับเมาส์ + scroll เหมือนมนุษย์อ่าน JD จริงๆ
                 time.sleep(random.uniform(1, 2))
@@ -137,7 +154,17 @@ def run():
         print(f"   🚩 ลิงก์เสีย: {flagged_count} (จะข้ามในรอบถัดไป)")
     if error_count:
         print(f"   ❌ Error: {error_count} (จะ retry รอบถัดไป)")
+    if blocked_count:
+        print(f"   🛡️ โดน challenge: {blocked_count} (จะ retry รอบถัดไป)")
     print(f"{'='*50}")
+
+    if blocked_count:
+        reason = f"หยุดก่อนครบหลังโดนติดกัน {_MAX_CONSECUTIVE_BLOCKED} งาน" if stopped_early else "ทำครบทุกงาน"
+        gh_warning(
+            f"Phase 2 โดน Cloudflare challenge {blocked_count} งาน ({reason}) — "
+            f"ดึง JD ได้ {success_count}/{len(pending_jobs)} ที่เหลือจะลองใหม่รอบหน้า"
+        )
+        gh_output("blocked", "true")
 
 
 if __name__ == '__main__':

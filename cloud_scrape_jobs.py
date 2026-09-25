@@ -13,13 +13,12 @@ from scraper_db import (
     get_connection, get_existing_links, upsert_job,
     get_browser_config, load_cookies, save_cookies,
     human_like_scroll, human_like_mouse, normalize_link, make_fingerprint,
-    solve_cloudflare_turnstile,
+    solve_cloudflare_turnstile, gh_warning, gh_output,
     HEADLESS,
 )
 
-
-class CloudflareBlockedError(Exception):
-    """โดน Cloudflare บล็อกจนหา job card ไม่เจอเลยสักงาน ตลอดทั้ง run"""
+# เปิดหน้าไม่ได้ตั้งแต่ครึ่งหนึ่งขึ้นไป = น่าจะโดน Cloudflare บล็อก
+_BLOCKED_RATIO = 0.5
 
 
 # ============================================================
@@ -135,6 +134,8 @@ def run():
     new_count = 0
     skipped_total = 0
     total_cards_seen = 0
+    pages_attempted = 0
+    pages_failed = 0
 
     # ---------------------------------------------------------
     # 2. เปิด Browser
@@ -200,6 +201,8 @@ def run():
             if not smart_wait_for_jobs(page):
                 print(f"❌ หาไม่เจอสำหรับ {label} — บันทึก screenshot ไว้ debug และข้ามไปคำถัดไป")
                 page.screenshot(path=f"cloud_failed_{safe_label}.png")
+                pages_attempted += max_pages
+                pages_failed += max_pages
                 continue
 
             save_cookies(context)
@@ -211,6 +214,7 @@ def run():
                 sep = "&" if "?" in search_url else "?"
                 target_url = f"{search_url}{sep}page={current_page}"
                 print(f"\n📄 หน้าที่ {current_page}/{max_pages} ({label})")
+                pages_attempted += 1
 
                 try:
                     # หน้า 1 เปิดไว้แล้วตอน STEP 2 — ไม่โหลดซ้ำ ลด request ลงหน้าละ 1 ต่อคำค้น
@@ -221,6 +225,7 @@ def run():
 
                     if not smart_wait_for_jobs(page, max_retries=15):
                         print(f"⚠️ หน้า {current_page} ไม่เจอ job listing → ข้ามไป")
+                        pages_failed += 1
                         continue
 
                     job_cards, method = find_job_cards(page)
@@ -275,6 +280,7 @@ def run():
 
                 except Exception as e:
                     print(f"❌ Error หน้า {current_page}: {e}")
+                    pages_failed += 1
                     continue
 
             # พักใหญ่ก่อนเปลี่ยนคำค้นหา/หมวด
@@ -297,20 +303,18 @@ def run():
     print(f"   🆕 งานใหม่ที่ upsert: {new_count}")
     print(f"   ⏭️ ข้ามงานซ้ำ: {skipped_total}")
     print(f"   📊 งานรวมใน DB: {len(existing_links)}")
+    print(f"   🚧 เปิดหน้าค้นหาไม่ได้: {pages_failed}/{pages_attempted} หน้า")
     print(f"{'='*50}")
 
-    # ถ้าไม่เจอ job card เลยสักใบตลอดทั้ง run (ทุก keyword ทุกหน้า)
-    # แปลว่าไม่ใช่แค่ "ไม่มีงานใหม่" แต่คือ scraper เข้าไม่ถึงเนื้อหาจริงๆ
-    # (เช่น โดน Cloudflare บล็อก หรือ selector ไม่ตรงกับหน้าเว็บแล้ว) → ต้อง fail ดังๆ
-    if total_cards_seen == 0:
-        raise CloudflareBlockedError(
-            "ไม่เจอ job card เลยสักใบตลอด run — อาจโดน Cloudflare บล็อกหรือ selector ไม่ตรงกับหน้าเว็บ"
+    # โดนบล็อก = เตือนแล้วจบแบบปกติ ไม่ fail ให้ ETL ทำงานต่อได้
+    # และไม่ retry ทั้ง phase — ยิงซ้ำตอนโดนบล็อกยิ่งทำให้คะแนน IP แย่ลง
+    if total_cards_seen == 0 or (pages_attempted and pages_failed / pages_attempted >= _BLOCKED_RATIO):
+        gh_warning(
+            f"Phase 1 เปิดหน้าค้นหาไม่ได้ {pages_failed}/{pages_attempted} หน้า "
+            f"(ได้งานใหม่ {new_count}) — น่าจะโดน Cloudflare บล็อก หรือ selector เปลี่ยน"
         )
+        gh_output("blocked", "true")
 
 
 if __name__ == '__main__':
-    try:
-        run()
-    except CloudflareBlockedError as e:
-        print(f"\n❌ {e}")
-        sys.exit(1)
+    run()

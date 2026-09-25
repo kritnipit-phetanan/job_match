@@ -181,6 +181,21 @@ def save_cookies(context):
 
 
 # ============================================================
+# GitHub Actions helpers — เตือนบนหน้า run + ส่งค่าให้ job ถัดไป
+# ============================================================
+def gh_warning(msg: str):
+    """แสดงเป็น annotation สีเหลืองบนหน้า run ของ GitHub (รันในเครื่องก็แค่พิมพ์ออกมา)"""
+    print(f"::warning title=JobsDB อาจบล็อก scraper::{msg}")
+
+
+def gh_output(key: str, value: str):
+    path = os.getenv("GITHUB_OUTPUT")
+    if path:
+        with open(path, "a") as f:
+            f.write(f"{key}={value}\n")
+
+
+# ============================================================
 # Cloudflare Turnstile Solver
 # ============================================================
 def solve_cloudflare_turnstile(page, max_attempts: int = 3):

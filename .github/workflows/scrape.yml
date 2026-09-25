@@ -17,6 +17,9 @@ jobs:
   scrape:
     runs-on: self-hosted
     timeout-minutes: 300
+    # ถ้า Phase 1/2 น่าจะโดนบล็อก สคริปต์จะเตือนแล้วจบแบบปกติ (ไม่ fail) และตั้ง blocked=true
+    outputs:
+      blocked: ${{ steps.phase1.outputs.blocked || steps.phase2.outputs.blocked }}
     env:
       # ให้ print() ของทุก step เขียนออกทันที ไม่สะสมใน buffer จนกว่าจะจบ
       # (self-hosted ไม่มี TTY ต่ออยู่ Python เลย block-buffer stdout โดย
@@ -52,6 +55,7 @@ jobs:
       #    Retry สูงสุด 2 ครั้ง
       # ---------------------------------------------------------
       - name: "Phase 1: Scrape job listings"
+        id: phase1
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JOBSDB_COOKIES: ${{ secrets.JOBSDB_COOKIES }}
@@ -90,6 +94,7 @@ jobs:
       # 5. Phase 2 — Scrape JD details → update description
       # ---------------------------------------------------------
       - name: "Phase 2: Scrape job descriptions"
+        id: phase2
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JOBSDB_COOKIES: ${{ secrets.JOBSDB_COOKIES }}
@@ -142,11 +147,11 @@ jobs:
       # ---------------------------------------------------------
       # 8. Deactivate — ปิดงานที่ไม่ได้อัปเดตเกิน 30 วัน
       #    ไม่ลบข้อมูล แค่ set is_active = false
-      #    รันเฉพาะเมื่อ scrape รอบนี้สำเร็จ — ถ้า scrape พังแล้วยัง deactivate
-      #    ต่อ จะปิดงานทั้งตารางเงียบ ๆ แบบ incident ส.ค. 2569
+      #    รันเฉพาะเมื่อ scrape รอบนี้สำเร็จและไม่โดนบล็อก — ถ้า scrape ไม่ได้
+      #    ข้อมูลใหม่แล้วยัง deactivate ต่อ จะปิดงานทั้งตารางเงียบ ๆ แบบ incident ส.ค. 2569
       # ---------------------------------------------------------
       - name: "Deactivate stale jobs (30+ days)"
-        if: ${{ success() && needs.scrape.result == 'success' }}
+        if: ${{ success() && needs.scrape.result == 'success' && needs.scrape.outputs.blocked != 'true' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python3 deactivate_stale_jobs.py
