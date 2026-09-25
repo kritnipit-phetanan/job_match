@@ -109,16 +109,17 @@ def smart_wait_for_jobs(page, max_retries=30) -> bool:
 # Main Pipeline
 # ============================================================
 def run():
-    # (label, search_url) — คำค้นหา 3 ตัวเดิม + 2 หมวดใหม่ (Engineering, ICT)
-    # ทุกตัวเป็นแบบทั้งประเทศ ไม่จำกัดพื้นที่ ใช้ URL format ปัจจุบันของ JobsDB (/th/...)
+    # (label, search_url, max_pages) — ทั้งประเทศ เรียงใหม่สุดก่อน (sortmode=ListedDate)
+    # ค่าเริ่มต้นของ JobsDB เรียงตาม "ตรงที่สุด" ซึ่งหน้าแรก ๆ เป็นงานเดิมเกือบทุกวัน
+    # หมวดกว้าง (Engineering/ICT) เอาแค่ 2 หน้า (~20 ชม. ล่าสุด) เพื่อลดโหลดที่ทำให้โดน
+    # Cloudflare rate limit; ตัดคำค้น "engineer" ออกเพราะซ้ำกับหมวด Engineering เกือบทั้งหมด
     search_targets = [
-        ("ai engineer", "https://th.jobsdb.com/th/ai-engineer-jobs"),
-        ("data scientist", "https://th.jobsdb.com/th/data-scientist-jobs"),
-        ("engineer", "https://th.jobsdb.com/th/engineer-jobs"),
-        ("engineering", "https://th.jobsdb.com/th/jobs-in-engineering"),
-        ("information & communication technology", "https://th.jobsdb.com/th/jobs-in-information-communication-technology"),
+        ("ai engineer", "https://th.jobsdb.com/th/ai-engineer-jobs?sortmode=ListedDate", 5),
+        ("data scientist", "https://th.jobsdb.com/th/data-scientist-jobs?sortmode=ListedDate", 5),
+        ("engineering", "https://th.jobsdb.com/th/jobs-in-engineering?sortmode=ListedDate", 2),
+        ("information & communication technology",
+         "https://th.jobsdb.com/th/jobs-in-information-communication-technology?sortmode=ListedDate", 2),
     ]
-    max_pages = 5
 
     home_url = "https://th.jobsdb.com/"
 
@@ -175,7 +176,7 @@ def run():
         # ---------------------------------------------------------
         # วนลูปตาม search_targets (keyword search + classification browse)
         # ---------------------------------------------------------
-        for idx, (label, search_url) in enumerate(search_targets):
+        for idx, (label, search_url, max_pages) in enumerate(search_targets):
             safe_label = label.replace(" ", "-").replace("&", "and").lower()
 
             print(f"\n{'='*40}")
@@ -207,11 +208,14 @@ def run():
             # STEP 4: ดึงข้อมูลทีละหน้า → upsert เข้า DB
             # ---------------------------------------------------------
             for current_page in range(1, max_pages + 1):
-                target_url = f"{search_url}?page={current_page}"
+                sep = "&" if "?" in search_url else "?"
+                target_url = f"{search_url}{sep}page={current_page}"
                 print(f"\n📄 หน้าที่ {current_page}/{max_pages} ({label})")
 
                 try:
-                    page.goto(target_url, timeout=60000)
+                    # หน้า 1 เปิดไว้แล้วตอน STEP 2 — ไม่โหลดซ้ำ ลด request ลงหน้าละ 1 ต่อคำค้น
+                    if current_page > 1:
+                        page.goto(target_url, timeout=60000)
                     human_like_mouse(page)
                     human_like_scroll(page)
 
