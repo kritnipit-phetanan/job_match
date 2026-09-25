@@ -11,8 +11,11 @@ router = APIRouter(
     tags=["Resume Engine"]
 )
 
+# ใช้ def ธรรมดา (ไม่ใช่ async) — งานข้างในเป็น blocking ทั้งหมด (PDF, Gemini, DB)
+# FastAPI จะรันใน threadpool ทำให้ health check "/" ยังตอบได้ระหว่างวิเคราะห์
+# ถ้าเป็น async def ทั้ง server จะค้าง จน Render restart instance กลาง request
 @router.post("/analyze")
-async def analyze_resume(
+def analyze_resume(
     file: UploadFile = File(...),
     limit: int = Query(10, description="จำนวนงานที่ต้องการให้แสดง"),
     location: str = Query(None, description="กรองตามสถานที่ (เช่น Bangkok)"),
@@ -30,7 +33,7 @@ async def analyze_resume(
         # ---------------------------------------------------------
         # STEP 1: อ่านและทำความสะอาด Resume (PDF -> Markdown)
         # ---------------------------------------------------------
-        file_bytes = await file.read()
+        file_bytes = file.file.read()
         markdown_text = parse_pdf_to_markdown(file_bytes, file.filename)
         
         # ถ้าไฟล์ว่างเปล่า (อ่าน text ไม่ออก)
@@ -104,7 +107,7 @@ async def analyze_resume(
         raise HTTPException(status_code=500, detail="ระบบเกิดข้อผิดพลาด")
 
 @router.post("/generate-cover-letter")
-async def generate_cover_letter(request: CoverLetterRequest):
+def generate_cover_letter(request: CoverLetterRequest):
     """
     รับ Resume Text และ Job Description เพื่อสร้าง Cover Letter ที่ตรงกับตำแหน่งงานด้วย AI
     """

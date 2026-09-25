@@ -1,4 +1,5 @@
 from google import genai
+from google.genai import types
 from google.genai.errors import APIError
 from app.core.config import settings
 import json
@@ -12,6 +13,19 @@ client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 # โมเดลหลัก และโมเดลสำรอง
 MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash']
+
+# Skill gap เป็นงานจับคู่ธรรมดา ไม่ต้อง "คิด" — 2.5-flash เปิด thinking ใช้ ~64s
+# (thinking ~10k tokens) ซึ่งนานจน request บน Render หลุด; ปิดแล้วเหลือ ~19s
+ANALYZE_MODELS = ['gemini-2.5-flash', 'gemini-3-flash-preview']
+
+
+def _analyze_config(model: str) -> types.GenerateContentConfig:
+    if model.startswith('gemini-2.5'):
+        return types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+            response_mime_type='application/json',
+        )
+    return types.GenerateContentConfig(response_mime_type='application/json')
 
 @retry(
     stop=stop_after_attempt(3), # ลองซ้ำสูงสุด 3 ครั้ง
@@ -101,24 +115,26 @@ def analyze_batch_resume(resume_text: str, jobs_list: list[dict]) -> dict:
     }}
     """
     
-    for model in MODELS:
+    for model in ANALYZE_MODELS:
         try:
-            response = client.models.generate_content(model=model, contents=prompt)
+            response = client.models.generate_content(
+                model=model, contents=prompt, config=_analyze_config(model)
+            )
             text = response.text.strip()
-            
+
             # ป้องกันกรณี Gemini ส่ง ```json ... ``` กลับมา
             if text.startswith("```"):
                 text = text.split("```")[1]
                 if text.startswith("json"):
                     text = text[4:]
-            
+
             result = json.loads(text.strip())
             logger.info(f"✅ Skill Gap keys from AI: {list(result.get('skill_gaps', {}).keys())[:5]}")
             return result
-            
+
         except APIError as e:
             logger.warning(f"⚠️ Model {model} failed with API Error: {e}")
-            if e.code == 503 and model != MODELS[-1]:
+            if e.code == 503 and model != ANALYZE_MODELS[-1]:
                 logger.info(f"🔄 Switching to fallback model...")
                 continue
             raise
