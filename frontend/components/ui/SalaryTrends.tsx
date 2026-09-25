@@ -102,7 +102,12 @@ export default function SalaryTrends({ activeChart, setActiveChart }: { activeCh
         );
     }
 
-    if (error || skills.length === 0) return null;
+    // ห้าม return null — ปุ่มสลับกราฟอยู่ในการ์ดนี้ ถ้าหายไปผู้ใช้จะกดกลับไม่ได้
+    const emptyMessage = error
+        ? error
+        : skills.length === 0
+            ? "Not enough salary data yet — needs 3+ listings per skill."
+            : null;
 
     return (
         <Card className="w-full h-[500px] shadow-sm border-border flex flex-col">
@@ -148,6 +153,11 @@ export default function SalaryTrends({ activeChart, setActiveChart }: { activeCh
                     </div>
                 </div>
 
+                {emptyMessage ? (
+                    <div className="w-full flex-1 flex items-center justify-center">
+                        <p className="text-muted-foreground text-sm">{emptyMessage}</p>
+                    </div>
+                ) : (
                 <div className="w-full flex-1">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={skills} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
@@ -170,6 +180,7 @@ export default function SalaryTrends({ activeChart, setActiveChart }: { activeCh
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
+                )}
             </CardContent>
         </Card>
     );
