@@ -4,7 +4,7 @@ Extract Skills — ใช้ Groq API (GROQ_MODEL ใน etl/config.py) แย�
 import json
 import re
 import time
-from groq import Groq, RateLimitError
+from groq import Groq, RateLimitError, APIConnectionError, InternalServerError
 from etl.config import GROQ_API_KEY, GROQ_MODEL
 
 # Rate limiting — Groq free tier (qwen/qwen3.8-27b): 1000 req/วัน, 8000 TPM,
@@ -24,7 +24,7 @@ class DailyLimitReached(SkillExtractionUnavailable):
 
 def _retry_after_seconds(msg: str):
     """ดึงเวลารอจาก 'Please try again in 1m26.4s' หรือ '3.48s'"""
-    m = re.search(r'try again in (?:(\d+)h)?(?:(\d+)m)?(\d+(?:\.\d+)?)s', msg)
+    m = re.search(r'try again in (?:(\d+)h\s*)?(?:(\d+)m\s*)?(\d+(?:\.\d+)?)s', msg)
     if not m:
         return None
     h, mnt, s = m.groups()
@@ -105,11 +105,18 @@ def extract_skills(jd_text: str, model: str = None) -> dict:
             time.sleep(wait_time)
             continue
 
+        except (APIConnectionError, InternalServerError) as e:
+            # เน็ตหลุด / timeout / Groq 5xx — ชั่วคราว รอแล้วลองใหม่
+            wait_time = _RETRY_BASE_DELAY * (2 ** attempt)
+            print(f"   🌐 เชื่อมต่อ Groq ไม่ได้ ({type(e).__name__}). รอ {wait_time}s แล้ว retry ({attempt+1}/{_MAX_RETRIES})...")
+            time.sleep(wait_time)
+            continue
+
         except Exception as e:
             # เช่น model ถูกถอด (404), key ผิด (401) — retry ไปก็ไม่หาย
             raise SkillExtractionUnavailable(f"Groq API error ({model}): {e}") from e
 
-    raise SkillExtractionUnavailable(f"Groq API ยังโดน rate limit หลัง retry {_MAX_RETRIES} ครั้ง")
+    raise SkillExtractionUnavailable(f"Groq API ยังใช้ไม่ได้หลัง retry {_MAX_RETRIES} ครั้ง")
 
 
 def _flatten_skills(skills) -> list[str]:
