@@ -1,11 +1,11 @@
 """
-Extract Skills — ใช้ Groq API (GROQ_MODEL ใน etl/config.py) แยก skills จาก Job Description
+Extract Skills — ใช้ Groq API (GROQ_MODELS ใน etl/config.py) แยก skills จาก Job Description
 """
 import json
 import re
 import time
 from groq import Groq, RateLimitError, APIConnectionError, InternalServerError
-from etl.config import GROQ_API_KEY, GROQ_MODEL
+from etl.config import GROQ_API_KEY, GROQ_MODELS
 
 # Rate limiting — Groq free tier (qwen/qwen3.8-27b): 1000 req/วัน, 8000 TPM,
 # และ output 1000 tokens/min (OTPM) ซึ่งตึงสุด — output ~200 tokens/call → ~5 call/min
@@ -19,7 +19,7 @@ class SkillExtractionUnavailable(Exception):
 
 
 class DailyLimitReached(SkillExtractionUnavailable):
-    """โควตา requests/วัน ของ Groq หมด — หยุดแล้วให้รอบถัดไปทำต่อ"""
+    """โควตารายวัน (requests หรือ tokens) ของ Groq หมด — หยุดแล้วให้รอบถัดไปทำต่อ"""
 
 
 def _retry_after_seconds(msg: str):
@@ -52,10 +52,15 @@ Rules:
 - Every value in the arrays must be a plain string with no extra text"""
 
 
+# Groq แยกโควตา token/วัน ต่อ model (200K ต่อตัวใน free tier) — ใช้ตัวแรกจนหมดแล้วสลับตัวถัดไป
+# qwen ~1.2k token/call (~165 งาน/วัน) + gpt-oss-120b ~1.9k (~104 งาน/วัน) ≈ 270 งาน/วัน
+_exhausted_models: set[str] = set()
+
+
 def extract_skills(jd_text: str, model: str = None) -> dict:
     """
     ส่ง JD text ไปให้ Groq แยก skills ออกมาเป็น JSON
-    พร้อม retry + exponential backoff สำหรับ 429 Rate Limit
+    ถ้าระบุ model จะใช้ตัวนั้นตัวเดียว ไม่งั้นไล่ตาม GROQ_MODELS และสลับเมื่อโควตารายวันหมด
     """
     if not jd_text or jd_text.strip() in ("", "Not Found", "Error", "No Link"):
         return {
@@ -64,8 +69,23 @@ def extract_skills(jd_text: str, model: str = None) -> dict:
             "job_type": "Not specified",
         }
 
-    model = model or GROQ_MODEL
+    if model:
+        return _extract_with_model(jd_text, model)
 
+    for m in [x for x in GROQ_MODELS if x not in _exhausted_models]:
+        try:
+            return _extract_with_model(jd_text, m)
+        except DailyLimitReached:
+            _exhausted_models.add(m)
+            remaining = [x for x in GROQ_MODELS if x not in _exhausted_models]
+            if remaining:
+                print(f"   🔄 โควตารายวันของ {m} หมด → สลับไปใช้ {remaining[0]}")
+
+    raise DailyLimitReached(f"โควตารายวันหมดทุก model: {', '.join(GROQ_MODELS)}")
+
+
+def _extract_with_model(jd_text: str, model: str) -> dict:
+    """เรียก Groq ด้วย model เดียว พร้อม retry สำหรับ rate limit รายนาที / เน็ตหลุด"""
     user_prompt = f"""Analyze this Job Description and extract the required information:
 
     {jd_text[:8000]}"""

@@ -159,7 +159,7 @@ def run_pipeline(csv_path: str = None, limit: int = None, from_db: bool = False)
     """
     ETL Pipeline หลัก (Updated for Semantic Embedding):
     1. อ่านข้อมูล (CSV หรือ DB)
-    2. Extract skills (Groq — GROQ_MODEL)
+    2. Extract skills (Groq — GROQ_MODELS)
     3. Construct Rich Text (Title + Skills + Summary)
     4. Embed Rich Text (Gemini Embedding)
     5. Upsert เข้า PostgreSQL

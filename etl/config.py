@@ -25,6 +25,9 @@ def get_database_url() -> str:
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
 GROQ_MODEL = os.getenv('GROQ_MODEL', 'qwen/qwen3.8-27b')
+GROQ_FALLBACK_MODEL = os.getenv('GROQ_FALLBACK_MODEL', 'openai/gpt-oss-120b')
+# ลำดับที่ใช้ — หมดโควตารายวันตัวแรกแล้วค่อยสลับไปตัวถัดไป
+GROQ_MODELS = list(dict.fromkeys([GROQ_MODEL, GROQ_FALLBACK_MODEL]))
 
 # Paths
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
