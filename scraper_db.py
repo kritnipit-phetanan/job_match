@@ -4,6 +4,7 @@ Scraper DB Helper — Shared utilities for cloud scraping pipeline
 """
 import psycopg2
 import os
+import re
 import time
 import random
 import json
@@ -301,10 +302,13 @@ def smart_delay(index: int, total: int, long_break_every: int = 25):
 
 
 def normalize_link(url: str) -> str:
-    """ลบ tracking params ออกจาก JobsDB URL"""
+    """ลบ tracking params และแปลงเป็นรูปแบบเดียว https://th.jobsdb.com/job/<id>
+    หน้าเว็บภาษาไทย (/th/...) ลิงก์ไปที่ /th/job/<id> ซึ่งเป็นงานเดียวกัน — ถ้าไม่แปลง
+    ตัวกันซ้ำจะมองเป็นคนละงาน (เคยทำให้งานซ้ำ 327 คู่)"""
     if not url or url == "N/A":
         return url
-    return url.split('?')[0].split('#')[0]
+    url = url.split('?')[0].split('#')[0]
+    return re.sub(r'^(https://th\.jobsdb\.com)/(?:th|en)/job/', r'\1/job/', url)
 
 
 def make_fingerprint(title, company, location=None, salary=None) -> tuple:
