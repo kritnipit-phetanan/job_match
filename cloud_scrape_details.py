@@ -5,6 +5,8 @@ Options: HEADLESS=false python cloud_scrape_details.py  (เปิด browser �
 """
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
+from contextlib import closing
+import psycopg2
 import time
 import random
 
@@ -23,6 +25,25 @@ BROKEN_LINK_FLAG = "Not Found"
 _MAX_CONSECUTIVE_BLOCKED = 3
 
 
+def save_description(link, jd_text):
+    """ใช้ connection อายุสั้น และ retry JD เดิมเมื่อ connection ขัดข้อง"""
+    for attempt in range(3):
+        try:
+            with closing(get_connection()) as conn:
+                update_description(conn, link, jd_text)
+            return
+        except (psycopg2.DatabaseError, psycopg2.InterfaceError) as exc:
+            # SQL errors ต้องแก้ที่ query/data ไม่ใช่เปิด connection แล้วยิงซ้ำ
+            connection_error = (
+                isinstance(exc, (psycopg2.OperationalError, psycopg2.InterfaceError))
+                or type(exc) is psycopg2.DatabaseError
+            ) and exc.pgcode is None
+            if not connection_error or attempt == 2:
+                raise
+            print(f"   ⚠️ DB connection ขัดข้อง → เชื่อมต่อใหม่ ({attempt + 2}/3)")
+            time.sleep(2 ** attempt)
+
+
 # ============================================================
 # Main Pipeline
 # ============================================================
@@ -31,15 +52,14 @@ def run():
     # 1. ดึงรายการ jobs ที่ยังไม่มี JD จาก Supabase
     # ---------------------------------------------------------
     print("📡 เชื่อมต่อ Supabase...")
-    conn = get_connection()
-    pending_jobs = get_pending_jobs(conn)
+    with closing(get_connection()) as conn:
+        pending_jobs = get_pending_jobs(conn)
 
     print(f"\n📊 สรุป:")
     print(f"   🆕 งานที่ต้อง scrape JD: {len(pending_jobs)} งาน\n")
 
     if len(pending_jobs) == 0:
         print("✅ ไม่มีงานใหม่ ทุกงานมี JD หมดแล้ว!")
-        conn.close()
         return
 
     # ---------------------------------------------------------
@@ -122,16 +142,19 @@ def run():
                             break
 
                 if jd_text:
-                    update_description(conn, link, jd_text)
+                    save_description(link, jd_text)
                     success_count += 1
                     print(f"   ✅ ดึง JD สำเร็จ! ({len(jd_text)} chars) → DB updated")
                 else:
-                    update_description(conn, link, BROKEN_LINK_FLAG)
+                    save_description(link, BROKEN_LINK_FLAG)
                     flagged_count += 1
                     print(f"   ⚠️ หา JD ไม่เจอ → flagged '{BROKEN_LINK_FLAG}'")
 
+            except psycopg2.Error:
+                # ห้ามเขียน "Error" ซ้ำเมื่อ DB เสีย — คงสถานะ pending ไว้
+                raise
             except Exception as e:
-                update_description(conn, link, "Error")
+                # งานยังเป็น pending อยู่แล้ว รอบถัดไปจะลอง scrape ใหม่
                 error_count += 1
                 print(f"   ❌ Error: {e}")
 
@@ -141,8 +164,6 @@ def run():
         # บันทึก cookies สุดท้าย
         save_cookies(context)
         browser.close()
-
-    conn.close()
 
     # ---------------------------------------------------------
     # สรุปผล
